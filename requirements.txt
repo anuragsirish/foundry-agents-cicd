@@ -1,0 +1,15 @@
+# Azure AI Evaluation SDK
+azure-ai-evaluation>=1.0.0
+azure-identity>=1.14.0
+
+# Azure AI Projects SDK (includes Agent Service)
+azure-ai-projects>=1.0.0
+
+# Python dotenv for environment variables
+python-dotenv>=1.0.0
+
+# Data handling
+pandas>=2.0.0
+
+# YAML support for agent configs
+pyyaml>=6.0

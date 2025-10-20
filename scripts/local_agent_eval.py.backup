@@ -1,0 +1,281 @@
+#!/usr/bin/env python3
+"""
+Local AI Agent Evaluation Script
+
+This script runs agent evaluations locally using the Azure AI Evaluation SDK.
+It's useful for testing before committing to CI/CD pipelines.
+
+Usage:
+    python scripts/local_agent_eval.py
+
+Requirements:
+    - .env file with required environment variables
+    - Azure AI Foundry project with deployed agent
+    - Evaluation judge model deployed (e.g., GPT-4o)
+"""
+
+import os
+import json
+from pathlib import Path
+from dotenv import load_dotenv
+from azure.ai.evaluation import evaluate
+from azure.ai.evaluation import (
+    RelevanceEvaluator,
+    CoherenceEvaluator,
+    FluencyEvaluator,
+    GroundednessEvaluator,
+    ViolenceEvaluator,
+    SexualEvaluator,
+    SelfHarmEvaluator,
+    HateUnfairnessEvaluator,
+)
+from azure.identity import DefaultAzureCredential
+from azure.ai.projects import AIProjectClient
+from azure.ai.projects.models import ConnectionType
+
+# Load environment variables
+load_dotenv()
+
+# Configuration
+AZURE_AI_PROJECT_ENDPOINT = os.getenv("AZURE_AI_PROJECT_ENDPOINT")
+AZURE_DEPLOYMENT_NAME = os.getenv("AZURE_DEPLOYMENT_NAME")
+AGENT_ID = os.getenv("AGENT_ID_BASELINE")
+AZURE_SUBSCRIPTION_ID = os.getenv("AZURE_SUBSCRIPTION_ID")
+AZURE_RESOURCE_GROUP = os.getenv("AZURE_RESOURCE_GROUP")
+AZURE_AI_PROJECT_NAME = os.getenv("AZURE_AI_PROJECT_NAME")  # Actual project name in Azure
+
+DATA_PATH = Path(__file__).parent.parent / "data" / "agent-eval-data.json"
+OUTPUT_PATH = Path(__file__).parent.parent / "evaluation_results" / "agent_eval_output"
+
+
+def validate_environment():
+    """Validate required environment variables are set."""
+    required_vars = [
+        "AZURE_AI_PROJECT_ENDPOINT",
+        "AZURE_DEPLOYMENT_NAME",
+        "AGENT_ID_BASELINE",
+        "AZURE_SUBSCRIPTION_ID",
+        "AZURE_RESOURCE_GROUP",
+        "AZURE_AI_PROJECT_NAME",
+    ]
+    
+    missing_vars = [var for var in required_vars if not os.getenv(var)]
+    
+    if missing_vars:
+        print("❌ Error: Missing required environment variables:")
+        for var in missing_vars:
+            print(f"   - {var}")
+        print("\nPlease update your .env file with the required values.")
+        return False
+    
+    return True
+
+
+def load_test_data():
+    """Load test data from JSON file."""
+    print(f"📂 Loading test data from: {DATA_PATH}")
+    
+    if not DATA_PATH.exists():
+        print(f"❌ Error: Test data file not found at {DATA_PATH}")
+        return None
+    
+    with open(DATA_PATH, 'r') as f:
+        data = json.load(f)
+    
+    print(f"✅ Loaded {len(data.get('data', []))} test queries")
+    return data
+
+
+def prepare_evaluation_data(test_data):
+    """
+    Convert agent test data to JSONL format for evaluation.
+    Note: The agent will be called to generate responses during evaluation.
+    """
+    output_file = Path(__file__).parent.parent / "data" / "agent_eval_prepared.jsonl"
+    
+    with open(output_file, 'w') as f:
+        for item in test_data['data']:
+            # For agent evaluation, we only need the query
+            # The agent will be invoked to generate the response
+            f.write(json.dumps({"query": item["query"]}) + "\n")
+    
+    print(f"✅ Prepared evaluation data: {output_file}")
+    return output_file
+
+
+def get_azure_ai_project():
+    """Get Azure AI project configuration for portal integration."""
+    # Use the explicitly configured project name from .env
+    # This is the actual workspace/project name in Azure, not from the endpoint URL
+    
+    azure_ai_project = {
+        "subscription_id": AZURE_SUBSCRIPTION_ID,
+        "resource_group_name": AZURE_RESOURCE_GROUP,
+        "project_name": AZURE_AI_PROJECT_NAME,
+    }
+    
+    print(f"✅ Azure AI Project configuration:")
+    print(f"   Subscription: {AZURE_SUBSCRIPTION_ID}")
+    print(f"   Resource Group: {AZURE_RESOURCE_GROUP}")
+    print(f"   Project: {AZURE_AI_PROJECT_NAME}")
+    
+    return azure_ai_project
+    print(f"✅ Model configuration created for deployment: {AZURE_DEPLOYMENT_NAME}")
+    return model_config
+
+
+def create_agent_wrapper(agent_id):
+    """
+    Create a callable wrapper for the agent.
+    This is used by the evaluate() function to generate responses.
+    """
+    project_client = AIProjectClient(
+        endpoint=AZURE_AI_PROJECT_ENDPOINT,
+        credential=DefaultAzureCredential()
+    )
+    
+    def agent_fn(query: str):
+        """Call the agent with a query and return the response."""
+        # Create a thread
+        thread = project_client.agents.threads.create()
+        
+        # Send message
+        message = project_client.agents.messages.create(
+            thread_id=thread.id,
+            role="user",
+            content=query,
+        )
+        
+        # Run the agent
+        run = project_client.agents.runs.create_and_process(
+            thread_id=thread.id,
+            agent_id=agent_id,
+        )
+        
+        # Get messages
+        messages = project_client.agents.messages.list(thread_id=thread.id)
+        
+        # Extract the last assistant message
+        for msg in messages:
+            if msg.role == "assistant":
+                response = ""
+                for item in msg.content:
+                    if hasattr(item, "text") and hasattr(item.text, "value"):
+                        response += item.text.value
+                return response
+        
+        return "No response generated"
+    
+    return agent_fn
+
+
+def run_evaluation():
+    """Run the agent evaluation."""
+    print("\n" + "="*60)
+    print("🚀 Starting AI Agent Evaluation")
+    print("="*60 + "\n")
+    
+    # Validate environment
+    if not validate_environment():
+        return
+    
+    # Load test data
+    test_data = load_test_data()
+    if not test_data:
+        return
+    
+    # Prepare evaluation data
+    eval_data_path = prepare_evaluation_data(test_data)
+    
+    # Get Azure AI project config for portal integration
+    print("\n🔧 Setting up Azure AI project configuration...")
+    azure_ai_project = get_azure_ai_project()
+    
+    # Create credential
+    credential = DefaultAzureCredential()
+    
+    # Create evaluators with Azure AI project config
+    print("\n📊 Creating evaluators...")
+    evaluators = {
+        "violence": ViolenceEvaluator(
+            credential=credential,
+            azure_ai_project=azure_ai_project
+        ),
+        "sexual": SexualEvaluator(
+            credential=credential,
+            azure_ai_project=azure_ai_project
+        ),
+        "self_harm": SelfHarmEvaluator(
+            credential=credential,
+            azure_ai_project=azure_ai_project
+        ),
+        "hate_unfairness": HateUnfairnessEvaluator(
+            credential=credential,
+            azure_ai_project=azure_ai_project
+        ),
+    }
+    
+    print(f"✅ Created {len(evaluators)} safety evaluators")
+    
+    # Create agent wrapper
+    print(f"\n🤖 Connecting to agent: {AGENT_ID}")
+    agent_fn = create_agent_wrapper(AGENT_ID)
+    
+    # Create output directory
+    OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
+    
+    # Run evaluation WITH azure_ai_project for portal integration
+    print(f"\n⚙️ Running evaluation...")
+    print(f"   Data: {eval_data_path}")
+    print(f"   Agent: {AGENT_ID}")
+    print(f"   Output: {OUTPUT_PATH}")
+    print(f"   Portal Integration: ✅ ENABLED")
+    print("\n⏳ This may take a few minutes...\n")
+    
+    result = evaluate(
+        data=str(eval_data_path),
+        target=agent_fn,
+        evaluators=evaluators,
+        output_path=str(OUTPUT_PATH),
+        azure_ai_project=azure_ai_project,  # ← This enables portal integration!
+    )
+    
+    # Display results
+    print("\n" + "="*60)
+    print("✅ Evaluation Complete!")
+    print("="*60)
+    
+    print("\n📈 Results Summary:")
+    print("-" * 60)
+    
+    metrics = result.get("metrics", {})
+    for metric_name, metric_value in metrics.items():
+        if isinstance(metric_value, float):
+            print(f"   {metric_name}: {metric_value:.4f}")
+        else:
+            print(f"   {metric_name}: {metric_value}")
+    
+    print("\n💾 Detailed results saved to:")
+    print(f"   {OUTPUT_PATH}")
+    
+    # Show portal link
+    if result.get("studio_url"):
+        print("\n🌐 View in Azure AI Foundry Portal:")
+        print(f"   {result['studio_url']}")
+    else:
+        print("\n🌐 View in Azure AI Foundry Portal:")
+        print(f"   https://ai.azure.com")
+        print(f"   Navigate to: Projects > {azure_ai_project['project_name']} > Evaluation")
+    
+    print("\n" + "="*60 + "\n")
+    
+    return result
+
+
+if __name__ == "__main__":
+    try:
+        run_evaluation()
+    except Exception as e:
+        print(f"\n❌ Error during evaluation: {str(e)}")
+        import traceback
+        traceback.print_exc()
