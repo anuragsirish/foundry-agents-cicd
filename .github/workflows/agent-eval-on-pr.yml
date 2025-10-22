@@ -1,4 +1,4 @@
-name: "Agent Evaluation on Pull Request"
+name: "🤖 Agent Evaluation with Comparison"
 
 on:
   pull_request:
@@ -23,22 +23,23 @@ permissions:
   pull-requests: write
 
 jobs:
-  run-agent-evaluation:
+  evaluate-agents:
     runs-on: ubuntu-latest
+    name: 📊 Evaluate & Compare Agents
     
     steps:
-      - name: Checkout PR Branch
+      - name: 📥 Checkout Code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Fetch all history to access main branch
       
-      - name: Set up Python
+      - name: 🐍 Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
       
-      - name: Install Dependencies
+      - name: 📦 Install Dependencies
         run: |
           python -m pip install --upgrade pip
           pip install --upgrade setuptools wheel
@@ -46,7 +47,7 @@ jobs:
           pip install -r requirements.txt
           pip install azure-ai-projects azure-ai-evaluation azure-identity
       
-      - name: Azure Login using Federated Credentials
+      - name: 🔐 Azure Login
         uses: azure/login@v2
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
