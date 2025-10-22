@@ -76,6 +76,7 @@ jobs:
           echo "   Variant (second): ${{ vars.AGENT_ID_V2 }}"
           echo "   Project Endpoint: ${{ vars.AZURE_AI_PROJECT_ENDPOINT }}"
           echo "   Deployment: ${{ vars.AZURE_DEPLOYMENT_NAME }}"
+          echo "   API Version: ${{ vars.API_VERSION }}"
           echo "   Data Path: ${{ github.workspace }}/data/agent-eval-data.json"
       
       - name: Run AI Agent Evaluation with Comparison
