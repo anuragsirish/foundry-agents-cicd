@@ -59,11 +59,19 @@ jobs:
       - name: Set Agent IDs
         id: set-agents
         run: |
+          # TEMPORARY FIX: Evaluate only one agent at a time to avoid "not applicable" comparison errors
+          # The official action fails when comparing agents with non-numeric safety metric values
+          # See TROUBLESHOOTING.md for details
+          
           if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ github.event.inputs.agent_ids }}" ]; then
             echo "agent_ids=${{ github.event.inputs.agent_ids }}" >> $GITHUB_OUTPUT
           else
-            # Use both agents for comparison (baseline and v2)
-            echo "agent_ids=${{ vars.AGENT_ID_BASELINE }},${{ vars.AGENT_ID_V2 }}" >> $GITHUB_OUTPUT
+            # Evaluate PR agent only (not both simultaneously)
+            # TODO: Uncomment below when Microsoft fixes the action to handle "not applicable" values
+            # echo "agent_ids=${{ vars.AGENT_ID_BASELINE }},${{ vars.AGENT_ID_V2 }}" >> $GITHUB_OUTPUT
+            echo "agent_ids=${{ vars.AGENT_ID_BASELINE }}" >> $GITHUB_OUTPUT
+            echo "⚠️ Note: Evaluating single agent due to known comparison issue with official action"
+            echo "⚠️ To evaluate both agents, use the custom workflow instead"
           fi
           
           echo "🤖 Agent IDs to evaluate: $(cat $GITHUB_OUTPUT | grep agent_ids | cut -d'=' -f2)"

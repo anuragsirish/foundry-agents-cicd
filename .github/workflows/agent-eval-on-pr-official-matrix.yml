@@ -1,0 +1,273 @@
+name: "Agent Evaluation - Multi-Agent (Official Action - Matrix Strategy)"
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'agent-setup/**'
+      - 'data/agent-eval-data.json'
+      - '.github/workflows/agent-eval-on-pr-official-matrix.yml'
+  
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  evaluate-agents:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        agent:
+          - name: "Baseline Agent"
+            id_var: "AGENT_ID_BASELINE"
+            label: "baseline"
+          - name: "V2 Agent"
+            id_var: "AGENT_ID_V2"
+            label: "v2"
+      fail-fast: false  # Continue evaluating other agents even if one fails
+    
+    name: Evaluate ${{ matrix.agent.name }}
+    
+    steps:
+      - name: Checkout PR Branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Azure Login using Federated Credentials
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      
+      - name: Display Configuration
+        run: |
+          echo "🔍 Evaluation Configuration:"
+          echo "   Agent: ${{ matrix.agent.name }}"
+          echo "   Agent ID: ${{ vars[matrix.agent.id_var] }}"
+          echo "   Project Endpoint: ${{ vars.AZURE_AI_PROJECT_ENDPOINT }}"
+          echo "   Deployment: ${{ vars.AZURE_DEPLOYMENT_NAME }}"
+          echo "   Data Path: ${{ github.workspace }}/data/agent-eval-data.json"
+      
+      - name: Run AI Agent Evaluation
+        id: run-evaluation
+        uses: microsoft/ai-agent-evals@v2-beta
+        with:
+          azure-ai-project-endpoint: ${{ vars.AZURE_AI_PROJECT_ENDPOINT }}
+          deployment-name: ${{ vars.AZURE_DEPLOYMENT_NAME }}
+          agent-ids: ${{ vars[matrix.agent.id_var] }}
+          data-path: ${{ github.workspace }}/data/agent-eval-data.json
+          evaluation-result-view: 'all-scores'
+          api-version: ${{ vars.API_VERSION }}
+      
+      - name: Extract Metrics
+        id: extract-metrics
+        if: success()
+        run: |
+          python3 << 'EOF'
+          import json
+          import os
+          import glob
+          
+          # Find the evaluation output file
+          eval_files = glob.glob('data/eval-output_*.json')
+          
+          if not eval_files:
+              print("⚠️ No evaluation output file found")
+              exit(0)
+          
+          eval_file = eval_files[0]
+          print(f"📄 Reading evaluation results from: {eval_file}")
+          
+          with open(eval_file, 'r') as f:
+              results = json.load(f)
+          
+          metrics = results.get('metrics', {})
+          
+          # Extract key metrics (handle "not applicable" gracefully)
+          def safe_get(key, default=0):
+              value = metrics.get(key, default)
+              if isinstance(value, str) and 'not applicable' in value.lower():
+                  return 0
+              return value
+          
+          extracted = {
+              'relevance': safe_get('relevance.relevance'),
+              'coherence': safe_get('coherence.coherence'),
+              'fluency': safe_get('fluency.fluency'),
+              'groundedness': safe_get('groundedness.groundedness'),
+              'tool_call_accuracy': safe_get('tool_call_accuracy.tool_call_accuracy'),
+          }
+          
+          # Save metrics for this agent
+          output_dir = f"metrics-${{ matrix.agent.label }}"
+          os.makedirs(output_dir, exist_ok=True)
+          
+          with open(f"{output_dir}/metrics.json", 'w') as f:
+              json.dump(extracted, f, indent=2)
+          
+          print(f"✅ Metrics saved for ${{ matrix.agent.name }}")
+          print(json.dumps(extracted, indent=2))
+          EOF
+      
+      - name: Upload Evaluation Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-results-${{ matrix.agent.label }}
+          path: |
+            data/eval-output_*.json
+            metrics-${{ matrix.agent.label }}/
+          retention-days: 30
+
+  compare-results:
+    needs: evaluate-agents
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Download Baseline Results
+        uses: actions/download-artifact@v4
+        with:
+          name: eval-results-baseline
+          path: baseline-results
+        continue-on-error: true
+      
+      - name: Download V2 Results
+        uses: actions/download-artifact@v4
+        with:
+          name: eval-results-v2
+          path: v2-results
+        continue-on-error: true
+      
+      - name: Compare Metrics
+        id: compare
+        run: |
+          python3 << 'EOF'
+          import json
+          import os
+          
+          # Load metrics for both agents
+          try:
+              with open('baseline-results/metrics-baseline/metrics.json', 'r') as f:
+                  baseline = json.load(f)
+              baseline_exists = True
+          except FileNotFoundError:
+              print("⚠️ Baseline metrics not found")
+              baseline = {}
+              baseline_exists = False
+          
+          try:
+              with open('v2-results/metrics-v2/metrics.json', 'r') as f:
+                  v2 = json.load(f)
+              v2_exists = True
+          except FileNotFoundError:
+              print("⚠️ V2 metrics not found")
+              v2 = {}
+              v2_exists = False
+          
+          # Generate comparison summary
+          summary = "# 📊 Multi-Agent Evaluation Results\n\n"
+          
+          if baseline_exists and v2_exists:
+              summary += "## Comparison: Baseline vs V2\n\n"
+              summary += "| Metric | Baseline | V2 | Change | % Change |\n"
+              summary += "|--------|----------|----|---------|-----------|\n"
+              
+              for metric in baseline.keys():
+                  b_val = baseline.get(metric, 0)
+                  v2_val = v2.get(metric, 0)
+                  change = v2_val - b_val
+                  pct_change = (change / b_val * 100) if b_val != 0 else 0
+                  
+                  # Color coding
+                  if pct_change > 5:
+                      emoji = "🟢"
+                  elif pct_change < -5:
+                      emoji = "🔴"
+                  else:
+                      emoji = "🟡"
+                  
+                  summary += f"| {emoji} {metric} | {b_val:.3f} | {v2_val:.3f} | {change:+.3f} | {pct_change:+.1f}% |\n"
+          
+          elif baseline_exists:
+              summary += "## Baseline Agent Results\n\n"
+              for metric, value in baseline.items():
+                  summary += f"- **{metric}**: {value:.3f}\n"
+          
+          elif v2_exists:
+              summary += "## V2 Agent Results\n\n"
+              for metric, value in v2.items():
+                  summary += f"- **{metric}**: {value:.3f}\n"
+          
+          else:
+              summary += "⚠️ No evaluation results found for either agent.\n"
+          
+          # Write to GitHub Actions Summary
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
+              f.write("\n" + summary)
+          
+          print(summary)
+          EOF
+      
+      - name: Post PR Comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            
+            let comment = "## 🤖 Multi-Agent Evaluation Complete\n\n";
+            comment += "Evaluations have been performed for both agents using the official Azure AI action.\n\n";
+            comment += "**View detailed results:**\n";
+            comment += `- [GitHub Actions Summary](${context.payload.repository.html_url}/actions/runs/${context.runId})\n`;
+            comment += `- [Azure AI Foundry Portal](https://ai.azure.com)\n\n`;
+            
+            comment += "### Evaluated Agents\n\n";
+            comment += "1. ✅ **Baseline Agent** - `${{ vars.AGENT_ID_BASELINE }}`\n";
+            comment += "2. ✅ **V2 Agent** - `${{ vars.AGENT_ID_V2 }}`\n\n";
+            
+            comment += "### Next Steps\n\n";
+            comment += "- Review the comparison in the GitHub Actions summary\n";
+            comment += "- Check individual evaluation artifacts for detailed results\n";
+            comment += "- Merge if both agents perform as expected\n";
+            
+            comment += "\n---\n";
+            comment += `**Workflow:** [View logs](${context.payload.repository.html_url}/actions/runs/${context.runId})\n`;
+            
+            // Find and update or create comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number
+            });
+            
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('🤖 Multi-Agent Evaluation Complete')
+            );
+            
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: comment
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: comment
+              });
+            }
