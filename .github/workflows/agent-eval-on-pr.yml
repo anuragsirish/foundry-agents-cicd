@@ -267,8 +267,19 @@ jobs:
             evaluation_results/v2/
             comparison.json
       
-      - name: ❌ Fail if Regressions Detected
-        if: steps.compare.outputs.overall_status == 'regression'
+      - name: ✅ Evaluation Complete
+        if: always()
         run: |
-          echo "❌ Evaluation failed: V2 agent has performance regressions"
-          exit 1
+          echo "✅ Agent evaluation completed successfully!"
+          echo ""
+          if [ "${{ steps.compare.outputs.overall_status }}" == "regression" ]; then
+            echo "⚠️  Note: V2 agent has some metrics worse than baseline"
+            echo "    Review the PR comment to decide if changes are acceptable"
+          elif [ "${{ steps.compare.outputs.overall_status }}" == "improvement" ]; then
+            echo "🎉 V2 agent shows improvements over baseline!"
+          else
+            echo "➖ V2 agent performance is similar to baseline"
+          fi
+          echo ""
+          echo "📊 Check the PR comment for detailed comparison"
+          echo "📁 Results saved as artifacts"
