@@ -54,451 +54,221 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
       
-      - name: Check for Baseline Results
-        id: check-baseline
-        run: |
-          # Check if baseline results exist on main branch
-          git fetch origin main
-          
-          # Check if baseline file exists
-          if git show origin/main:evaluation_results/baseline/baseline_metrics.json > /dev/null 2>&1; then
-            echo "baseline_exists=true" >> $GITHUB_OUTPUT
-            echo "📊 Baseline found on main branch"
-            
-            # Extract baseline to temp location
-            git show origin/main:evaluation_results/baseline/baseline_metrics.json > /tmp/baseline_metrics.json
-            
-            echo "Baseline metrics:"
-            cat /tmp/baseline_metrics.json
-          else
-            echo "baseline_exists=false" >> $GITHUB_OUTPUT
-            echo "📝 No baseline found - this will be the first run"
-          fi
-      
-      - name: Set Evaluation Configuration
+      - name: 📋 Set Evaluation Configuration
         id: config
         run: |
-          echo "🔍 Evaluation Configuration:"
-          echo "   Agent ID: ${{ vars.AGENT_ID_BASELINE }}"
+          echo "� Evaluation Configuration:"
+          echo "   Baseline Agent: ${{ vars.AGENT_ID_BASELINE }}"
+          echo "   V2 Agent: ${{ vars.AGENT_ID_V2 }}"
           echo "   Project Endpoint: ${{ vars.AZURE_AI_PROJECT_ENDPOINT }}"
           echo "   Deployment: ${{ vars.AZURE_DEPLOYMENT_NAME }}"
-          echo "   Baseline exists: ${{ steps.check-baseline.outputs.baseline_exists }}"
           
           # Generate unique run ID
           RUN_ID="pr-${{ github.event.pull_request.number }}-$(date +%Y%m%d-%H%M%S)"
           echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
           echo "   Run ID: $RUN_ID"
       
-      - name: Create Output Directory
+      - name: 📁 Create Output Directories
         run: |
-          mkdir -p evaluation_results/pr_runs/${{ steps.config.outputs.run_id }}
           mkdir -p evaluation_results/baseline
+          mkdir -p evaluation_results/v2
       
-      - name: Run Agent Evaluation
+      - name: 🎯 Evaluate Baseline Agent
         env:
           AZURE_AI_PROJECT_ENDPOINT: ${{ vars.AZURE_AI_PROJECT_ENDPOINT }}
           AZURE_DEPLOYMENT_NAME: ${{ vars.AZURE_DEPLOYMENT_NAME }}
           AGENT_ID_BASELINE: ${{ vars.AGENT_ID_BASELINE }}
-          AZURE_OPENAI_ENDPOINT: ${{ vars.AZURE_OPENAI_ENDPOINT }}
-          AZURE_OPENAI_API_VERSION: ${{ vars.AZURE_OPENAI_API_VERSION }}
-          AZURE_OPENAI_DEPLOYMENT_NAME: ${{ vars.AZURE_OPENAI_DEPLOYMENT_NAME }}
         run: |
-          echo "🚀 Running agent evaluation..."
+          echo "🎯 Evaluating Baseline Agent (${{ vars.AGENT_ID_BASELINE }})..."
           python scripts/local_agent_eval.py
           
-          # Copy results to PR-specific directory
+          # Save baseline results
           cp evaluation_results/agent_eval_output/eval-output.json \
-             evaluation_results/pr_runs/${{ steps.config.outputs.run_id }}/evaluation_results.json
+             evaluation_results/baseline/baseline_results.json
           
-          echo "✅ Evaluation completed"
+          echo "✅ Baseline evaluation completed"
       
-      - name: Extract Metrics
-        id: extract-metrics
+      - name: 🚀 Evaluate V2 Agent
+        env:
+          AZURE_AI_PROJECT_ENDPOINT: ${{ vars.AZURE_AI_PROJECT_ENDPOINT }}
+          AZURE_DEPLOYMENT_NAME: ${{ vars.AZURE_DEPLOYMENT_NAME }}
+          AGENT_ID_BASELINE: ${{ vars.AGENT_ID_V2 }}
         run: |
-          # Extract current metrics
+          echo "🚀 Evaluating V2 Agent (${{ vars.AGENT_ID_V2 }})..."
+          python scripts/local_agent_eval.py
+          
+          # Save V2 results
+          cp evaluation_results/agent_eval_output/eval-output.json \
+             evaluation_results/v2/v2_results.json
+          
+          echo "✅ V2 evaluation completed"
+      
+      - name: 📊 Compare Agent Results
+        id: compare
+        run: |
           python3 << 'EOF'
           import json
           import os
           
-          # Read current evaluation results (Azure AI format)
-          with open('evaluation_results/agent_eval_output/eval-output.json', 'r') as f:
-              results = json.load(f)
+          # Read baseline results
+          with open('evaluation_results/baseline/baseline_results.json', 'r') as f:
+              baseline_data = json.load(f)
           
-          metrics = results.get('metrics', {})
+          # Read V2 results
+          with open('evaluation_results/v2/v2_results.json', 'r') as f:
+              v2_data = json.load(f)
           
-          # Azure AI evaluation nests metrics like relevance.relevance, coherence.coherence, etc.
-          # Extract ALL available metrics including passing rates and thresholds
-          current_metrics = {
-              # AI Quality Scores (1-5 scale)
-              'relevance': metrics.get('relevance.relevance', metrics.get('relevance.gpt_relevance', 0)),
-              'relevance_passing_rate': metrics.get('relevance.binary_aggregate', 0) * 100,
-              
-              'coherence': metrics.get('coherence.coherence', metrics.get('coherence.gpt_coherence', 0)),
-              'coherence_passing_rate': metrics.get('coherence.binary_aggregate', 0) * 100,
-              
-              'fluency': metrics.get('fluency.fluency', metrics.get('fluency.gpt_fluency', 0)),
-              'fluency_passing_rate': metrics.get('fluency.binary_aggregate', 0) * 100,
-              
-              'groundedness': metrics.get('groundedness.groundedness', metrics.get('groundedness.gpt_groundedness', 0)),
-              'groundedness_passing_rate': metrics.get('groundedness.binary_aggregate', 0) * 100,
-              
-              # Agent-specific metrics
-              'intent_resolution': metrics.get('intent_resolution.intent_resolution', 0),
-              'intent_resolution_passing_rate': metrics.get('intent_resolution.binary_aggregate', 0) * 100,
-              
-              'task_adherence': metrics.get('task_adherence.task_adherence', 0),
-              'task_adherence_passing_rate': metrics.get('task_adherence.binary_aggregate', 0) * 100,
-              
-              'tool_call_accuracy': metrics.get('tool_call_accuracy.tool_call_accuracy', 0),
-              'tool_call_accuracy_passing_rate': metrics.get('tool_call_accuracy.binary_aggregate', 0) * 100,
-              
-              'similarity': metrics.get('similarity.similarity', metrics.get('similarity.gpt_similarity', 0)),
-              'similarity_passing_rate': metrics.get('similarity.binary_aggregate', 0) * 100,
-              
-              # Operational Metrics
-              'client_run_duration': metrics.get('operational_metrics.client-run-duration-in-seconds', 0),
-              'server_run_duration': metrics.get('operational_metrics.server-run-duration-in-seconds', 0),
-              'completion_tokens': metrics.get('operational_metrics.completion-tokens', 0),
-              'prompt_tokens': metrics.get('operational_metrics.prompt-tokens', 0),
-              
-              # Risk & Safety Metrics (if available)
-              'violent_content_defect_rate': metrics.get('violent_content.defect_rate', 0) * 100,
-              'sexual_content_defect_rate': metrics.get('sexual_content.defect_rate', 0) * 100,
-              'self_harm_defect_rate': metrics.get('self_harm.defect_rate', 0) * 100,
-              'hate_unfair_defect_rate': metrics.get('hate_unfair.defect_rate', 0) * 100,
+          baseline_metrics = baseline_data.get('metrics', {})
+          v2_metrics = v2_data.get('metrics', {})
+          
+          # Extract metrics for comparison (handling nested keys)
+          def get_metric(metrics_dict, key_patterns):
+              """Try multiple key patterns to get a metric value"""
+              for pattern in key_patterns:
+                  if pattern in metrics_dict:
+                      return metrics_dict[pattern]
+              return 0
+          
+          # Define metrics to compare
+          metric_definitions = {
+              'Relevance': ['relevance.relevance', 'relevance.gpt_relevance'],
+              'Coherence': ['coherence.coherence', 'coherence.gpt_coherence'],
+              'Fluency': ['fluency.fluency', 'fluency.gpt_fluency'],
+              'Groundedness': ['groundedness.groundedness', 'groundedness.gpt_groundedness'],
+              'Tool Call Accuracy': ['tool_call_accuracy.tool_call_accuracy']
           }
           
-          # Save metrics for comparison
-          with open('current_metrics.json', 'w') as f:
-              json.dump(current_metrics, f, indent=2)
+          # Build comparison table
+          comparison_rows = []
           
-          print("Current metrics extracted:")
-          print(json.dumps(current_metrics, indent=2))
-          EOF
-      
-      - name: Compare with Baseline
-        id: compare
-        if: steps.check-baseline.outputs.baseline_exists == 'true'
-        run: |
-          python3 << 'EOF'
-          import json
-          import os
-          
-          # Read current metrics
-          with open('current_metrics.json', 'r') as f:
-              current = json.load(f)
-          
-          # Read baseline metrics
-          with open('/tmp/baseline_metrics.json', 'r') as f:
-              baseline = json.load(f)
-          
-          # Calculate differences
-          comparison = {}
-          for metric, current_value in current.items():
-              baseline_value = baseline.get(metric, 0)
+          for metric_name, key_patterns in metric_definitions.items():
+              baseline_value = get_metric(baseline_metrics, key_patterns)
+              v2_value = get_metric(v2_metrics, key_patterns)
               
-              if baseline_value == 0:
-                  diff_pct = 0
+              # Calculate difference and percentage
+              diff = v2_value - baseline_value
+              if baseline_value > 0:
+                  pct_change = (diff / baseline_value) * 100
               else:
-                  diff_pct = ((current_value - baseline_value) / baseline_value) * 100
+                  pct_change = 0
               
-              comparison[metric] = {
-                  'current': current_value,
-                  'baseline': baseline_value,
-                  'diff': current_value - baseline_value,
-                  'diff_pct': diff_pct
-              }
+              # Determine status
+              if abs(diff) < 0.1:
+                  status = "🟡"  # Neutral
+                  change_text = "No change"
+              elif diff > 0:
+                  status = "🟢"  # Improvement
+                  change_text = f"+{diff:.2f} ({pct_change:+.1f}%)"
+              else:
+                  status = "🔴"  # Regression
+                  change_text = f"{diff:.2f} ({pct_change:+.1f}%)"
+              
+              comparison_rows.append({
+                  'metric': metric_name,
+                  'baseline': f"{baseline_value:.2f}",
+                  'v2': f"{v2_value:.2f}",
+                  'change': change_text,
+                  'status': status
+              })
           
-          # Save comparison
+          # Save comparison for later
           with open('comparison.json', 'w') as f:
-              json.dump(comparison, f, indent=2)
+              json.dump(comparison_rows, f, indent=2)
           
-          # Determine if evaluation passed (no metric degraded by more than 5%)
-          quality_metrics = ['relevance', 'coherence', 'fluency', 'groundedness', 
-                            'tool_call_accuracy', 'intent_resolution', 'task_adherence']
+          # Print summary
+          print("=" * 60)
+          print("📊 AGENT COMPARISON SUMMARY")
+          print("=" * 60)
+          for row in comparison_rows:
+              print(f"{row['status']} {row['metric']:<20} Baseline: {row['baseline']:>6}  V2: {row['v2']:>6}  Change: {row['change']}")
+          print("=" * 60)
           
-          failed_metrics = []
-          for metric in quality_metrics:
-              if metric in comparison:
-                  if comparison[metric]['diff_pct'] < -5:  # More than 5% degradation
-                      failed_metrics.append(metric)
+          # Count improvements/regressions
+          improvements = sum(1 for r in comparison_rows if r['status'] == '🟢')
+          regressions = sum(1 for r in comparison_rows if r['status'] == '🔴')
+          neutral = sum(1 for r in comparison_rows if r['status'] == '🟡')
           
-          if failed_metrics:
-              print(f"⚠️ Quality degradation detected in: {', '.join(failed_metrics)}")
+          print(f"\n📈 Improvements: {improvements}")
+          print(f"📉 Regressions: {regressions}")
+          print(f"➖ Neutral: {neutral}")
+          
+          # Overall assessment
+          if regressions > 0:
+              print(f"\n❌ V2 Agent has {regressions} metric(s) worse than baseline")
               with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
-                  f.write('evaluation_passed=false\n')
-                  f.write(f'failed_metrics={",".join(failed_metrics)}\n')
+                  f.write("overall_status=regression\n")
+          elif improvements > 0:
+              print(f"\n✅ V2 Agent has {improvements} metric(s) better than baseline")
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                  f.write("overall_status=improvement\n")
           else:
-              print("✅ All quality metrics meet threshold")
+              print("\n➖ V2 Agent performance is similar to baseline")
               with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
-                  f.write('evaluation_passed=true\n')
-                  f.write('failed_metrics=\n')
-          
-          print("\nComparison completed:")
-          print(json.dumps(comparison, indent=2))
+                  f.write("overall_status=neutral\n")
           EOF
       
-      - name: Generate PR Comment
-        id: generate-comment
-        run: |
-          python3 << 'EOF'
-          import json
-          import os
-          
-          # Read current metrics
-          with open('current_metrics.json', 'r') as f:
-              current = json.load(f)
-          
-          baseline_exists = "${{ steps.check-baseline.outputs.baseline_exists }}" == "true"
-          
-          # Start building comment
-          comment = "## 🤖 Azure AI Agent Evaluation\n\n"
-          
-          if baseline_exists:
-              # Read comparison
-              with open('comparison.json', 'r') as f:
-                  comparison = json.load(f)
-              
-              eval_passed = "${{ steps.compare.outputs.evaluation_passed }}" == "true"
-              
-              if eval_passed:
-                  comment += "### ✅ Evaluation Passed\n\n"
-                  comment += "All quality metrics meet the baseline threshold (no degradation > 5%)\n\n"
-              else:
-                  failed = "${{ steps.compare.outputs.failed_metrics }}"
-                  comment += "### ⚠️ Quality Degradation Detected\n\n"
-                  comment += f"The following metrics degraded by more than 5%: **{failed}**\n\n"
-          else:
-              comment += "### � First Evaluation Run\n\n"
-              comment += "This is the first evaluation. Results will be saved as baseline when merged to main.\n\n"
-          
-          # Section 1: Operational Metrics
-          comment += "## Operational Metrics\n\n"
-          comment += "| Evaluation Score | "
-          if baseline_exists:
-              comment += "Current | Baseline | Change |\n"
-              comment += "|------------------|---------|----------|--------|\n"
-              
-              ops_metrics = [
-                  ('client_run_duration', 'Client run duration [s]'),
-                  ('server_run_duration', 'Server run duration [s]'),
-                  ('completion_tokens', 'Completion tokens'),
-                  ('prompt_tokens', 'Prompt tokens')
-              ]
-              
-              for key, label in ops_metrics:
-                  if key in comparison:
-                      c = comparison[key]
-                      curr = f"{c['current']:.2f}" if 'duration' in key else f"{c['current']:.0f}"
-                      base = f"{c['baseline']:.2f}" if 'duration' in key else f"{c['baseline']:.0f}"
-                      diff = f"{c['diff']:+.2f}" if 'duration' in key else f"{c['diff']:+.0f}"
-                      
-                      # Color code based on change (lower is better for duration, tokens)
-                      if 'duration' in key or 'tokens' in key:
-                          badge = "🟢" if c['diff'] < 0 else ("🔴" if c['diff'] > c['baseline'] * 0.1 else "🟡")
-                      else:
-                          badge = ""
-                      
-                      comment += f"| {badge} {label} | {curr} | {base} | {diff} |\n"
-          else:
-              comment += "Value |\n"
-              comment += "|------------------|-------|\n"
-              comment += f"| Client run duration [s] | {current.get('client_run_duration', 0):.2f} |\n"
-              comment += f"| Server run duration [s] | {current.get('server_run_duration', 0):.2f} |\n"
-              comment += f"| Completion tokens | {current.get('completion_tokens', 0):.0f} |\n"
-              comment += f"| Prompt tokens | {current.get('prompt_tokens', 0):.0f} |\n"
-          
-          # Section 2: AI Quality (AI-assisted)
-          comment += "\n## AI Quality (AI-assisted)\n\n"
-          comment += "| Evaluation Score | "
-          if baseline_exists:
-              comment += "Current | Baseline | Change | Passing Rate |\n"
-              comment += "|------------------|---------|----------|--------|-------------|\n"
-              
-              quality_metrics = [
-                  ('intent_resolution', 'Intent Resolution'),
-                  ('task_adherence', 'Task Adherence'),
-                  ('relevance', 'Relevance'),
-                  ('coherence', 'Coherence'),
-                  ('fluency', 'Fluency'),
-                  ('groundedness', 'Groundedness'),
-                  ('similarity', 'Similarity')
-              ]
-              
-              for key, label in quality_metrics:
-                  if key in comparison:
-                      c = comparison[key]
-                      curr = f"{c['current']:.2f}"
-                      base = f"{c['baseline']:.2f}"
-                      diff = f"{c['diff']:+.2f}"
-                      pass_rate = f"{current.get(f'{key}_passing_rate', 0):.1f}%"
-                      
-                      # Add status badge
-                      if c['diff_pct'] > 5:
-                          badge = "🟢"
-                      elif c['diff_pct'] < -5:
-                          badge = "🔴"
-                      else:
-                          badge = "🟡"
-                      
-                      comment += f"| {badge} {label} | {curr} | {base} | {diff} | {pass_rate} |\n"
-          else:
-              comment += "Value | Passing Rate |\n"
-              comment += "|------------------|-------|-------------|\n"
-              
-              quality_metrics = [
-                  ('intent_resolution', 'Intent Resolution'),
-                  ('task_adherence', 'Task Adherence'),
-                  ('relevance', 'Relevance'),
-                  ('coherence', 'Coherence'),
-                  ('fluency', 'Fluency'),
-                  ('groundedness', 'Groundedness'),
-                  ('similarity', 'Similarity')
-              ]
-              
-              for key, label in quality_metrics:
-                  value = f"{current.get(key, 0):.2f}"
-                  pass_rate = f"{current.get(f'{key}_passing_rate', 0):.1f}%"
-                  
-                  # Add badge based on passing rate
-                  if current.get(f'{key}_passing_rate', 0) >= 100:
-                      badge = "🟢"
-                  elif current.get(f'{key}_passing_rate', 0) >= 80:
-                      badge = "🟡"
-                  else:
-                      badge = "🔴"
-                  
-                  comment += f"| {badge} {label} | {value} | {pass_rate} |\n"
-          
-          # Section 3: Risk and Safety
-          has_safety_metrics = any(current.get(key, 0) > 0 for key in [
-              'violent_content_defect_rate', 'sexual_content_defect_rate', 
-              'self_harm_defect_rate', 'hate_unfair_defect_rate'
-          ])
-          
-          if has_safety_metrics:
-              comment += "\n## Risk and Safety\n\n"
-              comment += "| Evaluation Score | Defect Rate |\n"
-              comment += "|------------------|-------------|\n"
-              
-              safety_metrics = [
-                  ('violent_content_defect_rate', 'Violent content defect rate'),
-                  ('sexual_content_defect_rate', 'Sexual content defect rate'),
-                  ('self_harm_defect_rate', 'Self-harm-related content defect rate'),
-                  ('hate_unfair_defect_rate', 'Hateful and unfair content defect rate')
-              ]
-              
-              for key, label in safety_metrics:
-                  rate = current.get(key, 0)
-                  badge = "🟢" if rate == 0 else ("🔴" if rate > 5 else "🟡")
-                  comment += f"| {badge} {label} | {rate:.1f}% |\n"
-          
-          # Footer
-          comment += "\n---\n"
-          comment += f"**Run ID:** `${{ steps.config.outputs.run_id }}`\n"
-          comment += f"**Agent ID:** `${{ vars.AGENT_ID_BASELINE }}`\n"
-          comment += f"**Test Queries:** 10\n"
-          comment += f"**Workflow:** [View Logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})\n"
-          
-          # Save comment to file
-          with open('pr_comment.md', 'w') as f:
-              f.write(comment)
-          
-          print("Comment generated successfully")
-          EOF
-      
-      - name: Post PR Comment
+      - name: 💬 Comment on PR
+        if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
-            const comment = fs.readFileSync('pr_comment.md', 'utf8');
+            const comparison = JSON.parse(fs.readFileSync('comparison.json', 'utf8'));
             
-            // Find existing comment
-            const { data: comments } = await github.rest.issues.listComments({
+            // Build markdown table
+            let table = `## 🤖 Agent Evaluation Results\n\n`;
+            table += `### 📊 Baseline vs V2 Agent Comparison\n\n`;
+            table += `| Metric | Baseline | V2 | Change | Status |\n`;
+            table += `|--------|----------|-----|--------|--------|\n`;
+            
+            for (const row of comparison) {
+              table += `| ${row.metric} | ${row.baseline} | ${row.v2} | ${row.change} | ${row.status} |\n`;
+            }
+            
+            // Add summary
+            const improvements = comparison.filter(r => r.status === '🟢').length;
+            const regressions = comparison.filter(r => r.status === '🔴').length;
+            const neutral = comparison.filter(r => r.status === '🟡').length;
+            
+            table += `\n### Summary\n`;
+            table += `- 📈 Improvements: ${improvements}\n`;
+            table += `- 📉 Regressions: ${regressions}\n`;
+            table += `- ➖ Neutral: ${neutral}\n`;
+            
+            // Overall assessment
+            if (regressions > 0) {
+              table += `\n❌ **V2 Agent has ${regressions} metric(s) worse than baseline**\n`;
+            } else if (improvements > 0) {
+              table += `\n✅ **V2 Agent has ${improvements} metric(s) better than baseline**\n`;
+            } else {
+              table += `\n➖ **V2 Agent performance is similar to baseline**\n`;
+            }
+            
+            table += `\n---\n`;
+            table += `*Agent IDs:*\n`;
+            table += `- Baseline: \`${{ vars.AGENT_ID_BASELINE }}\`\n`;
+            table += `- V2: \`${{ vars.AGENT_ID_V2 }}\`\n`;
+            
+            // Post comment
+            await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.issue.number
+              issue_number: context.issue.number,
+              body: table
             });
-            
-            const botComment = comments.find(comment => 
-              comment.user.type === 'Bot' && 
-              comment.body.includes('🤖 Agent Evaluation Results')
-            );
-            
-            if (botComment) {
-              // Update existing comment
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: botComment.id,
-                body: comment
-              });
-              console.log('Updated existing PR comment');
-            } else {
-              // Create new comment
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: comment
-              });
-              console.log('Created new PR comment');
-            }
       
-      - name: Post to GitHub Actions Summary
-        if: always()
-        run: |
-          # Copy the PR comment to the GitHub Actions summary
-          cat pr_comment.md >> $GITHUB_STEP_SUMMARY
-          
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "---" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Additional Resources:**" >> $GITHUB_STEP_SUMMARY
-          echo "- [View PR](https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }})" >> $GITHUB_STEP_SUMMARY
-          echo "- [View Workflow Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
-          echo "- [Azure AI Foundry Portal](${{ vars.AZURE_AI_PROJECT_ENDPOINT }})" >> $GITHUB_STEP_SUMMARY
-      
-      - name: Upload Evaluation Results
+      - name: 📤 Upload Evaluation Results
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: evaluation-results-${{ steps.config.outputs.run_id }}
           path: |
-            evaluation_results/pr_runs/${{ steps.config.outputs.run_id }}/
-            current_metrics.json
+            evaluation_results/baseline/
+            evaluation_results/v2/
             comparison.json
-          retention-days: 30
       
-      - name: Check Quality Gate
-        if: steps.check-baseline.outputs.baseline_exists == 'true' && steps.compare.outputs.evaluation_passed == 'false'
+      - name: ❌ Fail if Regressions Detected
+        if: steps.compare.outputs.overall_status == 'regression'
         run: |
-          echo "⚠️ Quality gate failed!"
-          echo "The following metrics degraded by more than 5%:"
-          echo "${{ steps.compare.outputs.failed_metrics }}"
-          echo ""
-          echo "Please review the evaluation results and consider:"
-          echo "  1. Investigating why metrics degraded"
-          echo "  2. Adjusting your changes to maintain quality"
-          echo "  3. If intentional, document the reasoning"
-          echo ""
-          echo "To proceed anyway, add a comment to the PR explaining the degradation."
+          echo "❌ Evaluation failed: V2 agent has performance regressions"
           exit 1
-      
-      - name: Evaluation Summary
-        if: success()
-        run: |
-          echo "✅ Agent evaluation completed successfully!"
-          echo ""
-          echo "📊 Results have been posted to the PR"
-          echo "📁 Detailed results saved as artifacts"
-          echo ""
-          if [ "${{ steps.check-baseline.outputs.baseline_exists }}" == "true" ]; then
-            echo "✓ Compared against baseline"
-            if [ "${{ steps.compare.outputs.evaluation_passed }}" == "true" ]; then
-              echo "✓ All quality metrics within threshold"
-            fi
-          else
-            echo "📝 First evaluation run - will become baseline when merged"
-          fi
