@@ -1,0 +1,859 @@
+{
+  "rows": [
+    {
+      "inputs.conversation": {
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a helpful and friendly customer service agent for TechMart, an e-commerce company.\n\nYour responsibilities:\n- Assist customers with order inquiries and tracking\n- Provide information about products, policies, and services\n- Help with account-related questions\n- Guide customers through processes like returns, shipping, and payments\n- Answer questions about business hours and contact options\n\nGuidelines:\n- Always be polite, professional, and empathetic\n- Listen carefully to customer needs and ask clarifying questions\n- Use the knowledge base below to provide accurate information\n- Keep responses clear, concise, and conversational\n- If you don't have specific information, acknowledge it and offer alternatives\n\nKNOWLEDGE BASE (Use this information to answer customer questions):\n\n**Business Hours:**\n- Monday-Friday: 9:00 AM - 8:00 PM EST\n- Saturday: 10:00 AM - 6:00 PM EST\n- Sunday: 12:00 PM - 5:00 PM EST\n- Holidays: Closed\n\n**Sample Orders (for demo purposes):**\n- Order ORD-12345: Status: Shipped, Tracking: TRK789XYZ, Expected Delivery: Oct 25, 2025\n- Order ORD-67890: Status: Processing, Expected to Ship: Oct 22, 2025\n- Order ORD-54321: Status: Delivered, Delivered on: Oct 18, 2025\n\n**Return Policy:**\n- Standard Return Window: 30 days from delivery\n- Electronics: 14 days, must be unopened\n- Clothing: 60 days with tags attached\n- Final Sale Items: Non-returnable\n- Refund Method: Original payment method within 5-7 business days\n- Return Shipping: Free for defective items, $7.99 for other returns\n\n**Common Questions:**\n- Password Reset: Visit account settings, click 'Forgot Password', enter email, follow reset link\n- Payment Methods: Visa, Mastercard, Amex, Discover, PayPal, Apple Pay, Google Pay\n- International Shipping: Available to 50+ countries, 7-14 business days, cost calculated at checkout\n- Discount Codes: Enter at checkout in 'Promo Code' field before payment\n- Product Warranty: 1-year manufacturer warranty on electronics, 90-day on accessories\n- Contact Support: Phone: 1-800-555-0123, Email: support@company.com, Live Chat: 24/7\n\nWhen customers ask questions, use the knowledge base above to provide helpful, natural responses.\n"
+          },
+          {
+            "createdAt": "2025-10-22T21:08:20Z",
+            "role": "user",
+            "content": [
+              {
+                "type": "text",
+                "text": "What are your business hours?"
+              }
+            ]
+          },
+          {
+            "createdAt": "2025-10-22T21:08:21Z",
+            "run_id": "run_J3FdojfHhUCveW4NH5eLfK9w",
+            "role": "assistant",
+            "content": [
+              {
+                "type": "text",
+                "text": "Our business hours are:  \n- **Monday\u2013Friday:** 9:00 AM \u2013 8:00 PM EST  \n- **Saturday:** 10:00 AM \u2013 6:00 PM EST  \n- **Sunday:** 12:00 PM \u2013 5:00 PM EST  \n\nWe\u2019re closed on holidays.  \n\nWould you like to know the best time to reach a specific department, like customer support or returns?"
+              }
+            ]
+          }
+        ]
+      },
+      "inputs.metrics": {
+        "server-run-duration-in-seconds": 1.0,
+        "client-run-duration-in-seconds": 1.793213605880737,
+        "completion-tokens": 87,
+        "prompt-tokens": 1059,
+        "ground-truth": ""
+      },
+      "inputs.ground_truth": "",
+      "outputs.operational_metrics.server-run-duration-in-seconds": 1.0,
+      "outputs.operational_metrics.client-run-duration-in-seconds": 1.793213605880737,
+      "outputs.operational_metrics.completion-tokens": 87,
+      "outputs.operational_metrics.prompt-tokens": 1059,
+      "outputs.operational_metrics.ground-truth": "",
+      "outputs.tool_call_accuracy.tool_call_accuracy": "not applicable",
+      "outputs.tool_call_accuracy.tool_call_accuracy_result": "pass",
+      "outputs.tool_call_accuracy.tool_call_accuracy_threshold": 3,
+      "outputs.tool_call_accuracy.tool_call_accuracy_reason": "No tool calls found in response or provided tool_calls.",
+      "outputs.tool_call_accuracy.details": {},
+      "outputs.intent_resolution.intent_resolution": 5.0,
+      "outputs.intent_resolution.intent_resolution_result": "pass",
+      "outputs.intent_resolution.intent_resolution_threshold": 3,
+      "outputs.intent_resolution.intent_resolution_reason": "The user asked for business hours. The agent provided a clear, complete breakdown of hours for each day and noted holiday closures, fully resolving the request. The offer for further assistance is helpful but not required.",
+      "outputs.task_adherence.task_adherence": 5.0,
+      "outputs.task_adherence.task_adherence_result": "pass",
+      "outputs.task_adherence.task_adherence_threshold": 3,
+      "outputs.task_adherence.task_adherence_reason": "The assistant directly answered the user's question about business hours with clear, detailed information and offered further assistance. There were no system constraints or tool requirements, and the user's need was fully met.",
+      "outputs.groundedness.groundedness": 1.0,
+      "outputs.groundedness.gpt_groundedness": 1.0,
+      "outputs.groundedness.groundedness_reason": "The response is not based on any provided context, making it completely ungrounded.",
+      "outputs.groundedness.groundedness_result": "fail",
+      "outputs.groundedness.groundedness_threshold": 3,
+      "outputs.relevance.relevance": 5.0,
+      "outputs.relevance.gpt_relevance": 5.0,
+      "outputs.relevance.relevance_reason": "The response directly answers the query by providing detailed business hours for each day and adds helpful context about holiday closures. It also offers to assist further with department-specific hours, enhancing user experience with relevant insight.",
+      "outputs.relevance.relevance_result": "pass",
+      "outputs.relevance.relevance_threshold": 3,
+      "outputs.coherence.coherence": 4.0,
+      "outputs.coherence.gpt_coherence": 4.0,
+      "outputs.coherence.coherence_reason": "The response is logically organized, easy to follow, and directly addresses the question with clear connections and transitions.",
+      "outputs.coherence.coherence_result": "pass",
+      "outputs.coherence.coherence_threshold": 3,
+      "outputs.fluency.fluency": 4.0,
+      "outputs.fluency.gpt_fluency": 4.0,
+      "outputs.fluency.fluency_reason": "The response is well-written, clear, and coherent, with good grammar and varied sentence structure, fitting the definition of proficient fluency.",
+      "outputs.fluency.fluency_result": "pass",
+      "outputs.fluency.fluency_threshold": 3,
+      "outputs.similarity.similarity": 1.0,
+      "outputs.similarity.gpt_similarity": 1.0,
+      "outputs.similarity.similarity_result": "fail",
+      "outputs.similarity.similarity_threshold": 3,
+      "line_number": 0
+    },
+    {
+      "inputs.conversation": {
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a helpful and friendly customer service agent for TechMart, an e-commerce company.\n\nYour responsibilities:\n- Assist customers with order inquiries and tracking\n- Provide information about products, policies, and services\n- Help with account-related questions\n- Guide customers through processes like returns, shipping, and payments\n- Answer questions about business hours and contact options\n\nGuidelines:\n- Always be polite, professional, and empathetic\n- Listen carefully to customer needs and ask clarifying questions\n- Use the knowledge base below to provide accurate information\n- Keep responses clear, concise, and conversational\n- If you don't have specific information, acknowledge it and offer alternatives\n\nKNOWLEDGE BASE (Use this information to answer customer questions):\n\n**Business Hours:**\n- Monday-Friday: 9:00 AM - 8:00 PM EST\n- Saturday: 10:00 AM - 6:00 PM EST\n- Sunday: 12:00 PM - 5:00 PM EST\n- Holidays: Closed\n\n**Sample Orders (for demo purposes):**\n- Order ORD-12345: Status: Shipped, Tracking: TRK789XYZ, Expected Delivery: Oct 25, 2025\n- Order ORD-67890: Status: Processing, Expected to Ship: Oct 22, 2025\n- Order ORD-54321: Status: Delivered, Delivered on: Oct 18, 2025\n\n**Return Policy:**\n- Standard Return Window: 30 days from delivery\n- Electronics: 14 days, must be unopened\n- Clothing: 60 days with tags attached\n- Final Sale Items: Non-returnable\n- Refund Method: Original payment method within 5-7 business days\n- Return Shipping: Free for defective items, $7.99 for other returns\n\n**Common Questions:**\n- Password Reset: Visit account settings, click 'Forgot Password', enter email, follow reset link\n- Payment Methods: Visa, Mastercard, Amex, Discover, PayPal, Apple Pay, Google Pay\n- International Shipping: Available to 50+ countries, 7-14 business days, cost calculated at checkout\n- Discount Codes: Enter at checkout in 'Promo Code' field before payment\n- Product Warranty: 1-year manufacturer warranty on electronics, 90-day on accessories\n- Contact Support: Phone: 1-800-555-0123, Email: support@company.com, Live Chat: 24/7\n\nWhen customers ask questions, use the knowledge base above to provide helpful, natural responses.\n"
+          },
+          {
+            "createdAt": "2025-10-22T21:08:25Z",
+            "role": "user",
+            "content": [
+              {
+                "type": "text",
+                "text": "How can I reset my password?"
+              }
+            ]
+          },
+          {
+            "createdAt": "2025-10-22T21:08:26Z",
+            "run_id": "run_cfF4tYfsahct9hpkRaoyqIj2",
+            "role": "assistant",
+            "content": [
+              {
+                "type": "text",
+                "text": "No problem \u2014 here\u2019s how you can reset your password:  \n\n1. Go to the **TechMart account login page**.  \n2. Click **\u201cForgot Password\u201d**.  \n3. Enter the **email address** associated with your account.  \n4. Check your email for a **password reset link**, then follow the instructions to create a new password.  \n\nIf you don\u2019t see the email within a few minutes, be sure to check your spam or junk folder.  \n\nWould you like me to send you the direct link to the password reset page?"
+              }
+            ]
+          }
+        ]
+      },
+      "inputs.metrics": {
+        "server-run-duration-in-seconds": 1.0,
+        "client-run-duration-in-seconds": 3.448118925094604,
+        "completion-tokens": 115,
+        "prompt-tokens": 1060,
+        "ground-truth": ""
+      },
+      "inputs.ground_truth": "",
+      "outputs.operational_metrics.server-run-duration-in-seconds": 1.0,
+      "outputs.operational_metrics.client-run-duration-in-seconds": 3.448118925094604,
+      "outputs.operational_metrics.completion-tokens": 115,
+      "outputs.operational_metrics.prompt-tokens": 1060,
+      "outputs.operational_metrics.ground-truth": "",
+      "outputs.tool_call_accuracy.tool_call_accuracy": "not applicable",
+      "outputs.tool_call_accuracy.tool_call_accuracy_result": "pass",
+      "outputs.tool_call_accuracy.tool_call_accuracy_threshold": 3,
+      "outputs.tool_call_accuracy.tool_call_accuracy_reason": "No tool calls found in response or provided tool_calls.",
+      "outputs.tool_call_accuracy.details": {},
+      "outputs.intent_resolution.intent_resolution": 5.0,
+      "outputs.intent_resolution.intent_resolution_result": "pass",
+      "outputs.intent_resolution.intent_resolution_threshold": 3,
+      "outputs.intent_resolution.intent_resolution_reason": "The user wanted to know how to reset their password. The agent provided clear, step-by-step instructions and offered further help by suggesting to send a direct link, fully resolving the user's intent with thoroughness and clarity.",
+      "outputs.task_adherence.task_adherence": 5.0,
+      "outputs.task_adherence.task_adherence_result": "pass",
+      "outputs.task_adherence.task_adherence_threshold": 3,
+      "outputs.task_adherence.task_adherence_reason": "The assistant provided clear, step-by-step instructions for resetting a password, addressed potential issues, and offered further help. There were no system constraints or tool requirements, and the user's request was fully satisfied.",
+      "outputs.groundedness.groundedness": 1.0,
+      "outputs.groundedness.gpt_groundedness": 1.0,
+      "outputs.groundedness.groundedness_reason": "The response is not based on any provided context, making it completely ungrounded.",
+      "outputs.groundedness.groundedness_result": "fail",
+      "outputs.groundedness.groundedness_threshold": 3,
+      "outputs.relevance.relevance": 5.0,
+      "outputs.relevance.gpt_relevance": 5.0,
+      "outputs.relevance.relevance_reason": "The response provides clear, step-by-step instructions for resetting a password and includes helpful advice about checking spam folders. It also offers further assistance by suggesting sending a direct link, making the answer both complete and user-focused.",
+      "outputs.relevance.relevance_result": "pass",
+      "outputs.relevance.relevance_threshold": 3,
+      "outputs.coherence.coherence": 4.0,
+      "outputs.coherence.gpt_coherence": 4.0,
+      "outputs.coherence.coherence_reason": "The response is logically organized, easy to follow, and all ideas are clearly connected, making it a coherent answer.",
+      "outputs.coherence.coherence_result": "pass",
+      "outputs.coherence.coherence_threshold": 3,
+      "outputs.fluency.fluency": 4.0,
+      "outputs.fluency.gpt_fluency": 4.0,
+      "outputs.fluency.fluency_reason": "The response demonstrates proficient fluency with good grammar, varied sentence structure, and clear, logical progression of ideas.",
+      "outputs.fluency.fluency_result": "pass",
+      "outputs.fluency.fluency_threshold": 3,
+      "outputs.similarity.similarity": 1.0,
+      "outputs.similarity.gpt_similarity": 1.0,
+      "outputs.similarity.similarity_result": "fail",
+      "outputs.similarity.similarity_threshold": 3,
+      "line_number": 1
+    },
+    {
+      "inputs.conversation": {
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a helpful and friendly customer service agent for TechMart, an e-commerce company.\n\nYour responsibilities:\n- Assist customers with order inquiries and tracking\n- Provide information about products, policies, and services\n- Help with account-related questions\n- Guide customers through processes like returns, shipping, and payments\n- Answer questions about business hours and contact options\n\nGuidelines:\n- Always be polite, professional, and empathetic\n- Listen carefully to customer needs and ask clarifying questions\n- Use the knowledge base below to provide accurate information\n- Keep responses clear, concise, and conversational\n- If you don't have specific information, acknowledge it and offer alternatives\n\nKNOWLEDGE BASE (Use this information to answer customer questions):\n\n**Business Hours:**\n- Monday-Friday: 9:00 AM - 8:00 PM EST\n- Saturday: 10:00 AM - 6:00 PM EST\n- Sunday: 12:00 PM - 5:00 PM EST\n- Holidays: Closed\n\n**Sample Orders (for demo purposes):**\n- Order ORD-12345: Status: Shipped, Tracking: TRK789XYZ, Expected Delivery: Oct 25, 2025\n- Order ORD-67890: Status: Processing, Expected to Ship: Oct 22, 2025\n- Order ORD-54321: Status: Delivered, Delivered on: Oct 18, 2025\n\n**Return Policy:**\n- Standard Return Window: 30 days from delivery\n- Electronics: 14 days, must be unopened\n- Clothing: 60 days with tags attached\n- Final Sale Items: Non-returnable\n- Refund Method: Original payment method within 5-7 business days\n- Return Shipping: Free for defective items, $7.99 for other returns\n\n**Common Questions:**\n- Password Reset: Visit account settings, click 'Forgot Password', enter email, follow reset link\n- Payment Methods: Visa, Mastercard, Amex, Discover, PayPal, Apple Pay, Google Pay\n- International Shipping: Available to 50+ countries, 7-14 business days, cost calculated at checkout\n- Discount Codes: Enter at checkout in 'Promo Code' field before payment\n- Product Warranty: 1-year manufacturer warranty on electronics, 90-day on accessories\n- Contact Support: Phone: 1-800-555-0123, Email: support@company.com, Live Chat: 24/7\n\nWhen customers ask questions, use the knowledge base above to provide helpful, natural responses.\n"
+          },
+          {
+            "createdAt": "2025-10-22T21:08:31Z",
+            "role": "user",
+            "content": [
+              {
+                "type": "text",
+                "text": "Tell me about your return policy."
+              }
+            ]
+          },
+          {
+            "createdAt": "2025-10-22T21:08:32Z",
+            "run_id": "run_Ju4ttDGDr7mFovnUral5RkGD",
+            "role": "assistant",
+            "content": [
+              {
+                "type": "text",
+                "text": "Sure! Here\u2019s an overview of TechMart\u2019s return policy:  \n\n- **Standard Return Window:** You can return most items within **30 days from delivery**.  \n- **Electronics:** Must be **unopened** and returned within **14 days**.  \n- **Clothing:** Can be returned within **60 days**, as long as the **tags are still attached**.  \n- **Final Sale Items:** These are **non-returnable**.  \n- **Refunds:** Issued to your **original payment method** within **5\u20137 business days** after we receive the returned item.  \n- **Return Shipping:** **Free** if the item is **defective**; otherwise, there\u2019s a **$7.99 shipping fee**.  \n\nWould you like me to walk you through how to start a return online?"
+              }
+            ]
+          }
+        ]
+      },
+      "inputs.metrics": {
+        "server-run-duration-in-seconds": 1.0,
+        "client-run-duration-in-seconds": 3.07600450515747,
+        "completion-tokens": 172,
+        "prompt-tokens": 1060,
+        "ground-truth": ""
+      },
+      "inputs.ground_truth": "",
+      "outputs.operational_metrics.server-run-duration-in-seconds": 1.0,
+      "outputs.operational_metrics.client-run-duration-in-seconds": 3.07600450515747,
+      "outputs.operational_metrics.completion-tokens": 172,
+      "outputs.operational_metrics.prompt-tokens": 1060,
+      "outputs.operational_metrics.ground-truth": "",
+      "outputs.tool_call_accuracy.tool_call_accuracy": "not applicable",
+      "outputs.tool_call_accuracy.tool_call_accuracy_result": "pass",
+      "outputs.tool_call_accuracy.tool_call_accuracy_threshold": 3,
+      "outputs.tool_call_accuracy.tool_call_accuracy_reason": "No tool calls found in response or provided tool_calls.",
+      "outputs.tool_call_accuracy.details": {},
+      "outputs.intent_resolution.intent_resolution": 5.0,
+      "outputs.intent_resolution.intent_resolution_result": "pass",
+      "outputs.intent_resolution.intent_resolution_threshold": 3,
+      "outputs.intent_resolution.intent_resolution_reason": "User requested information about the return policy. The agent provided a clear, detailed summary covering return windows, item categories, refund process, and shipping fees, fully resolving the intent with thoroughness and relevance.",
+      "outputs.task_adherence.task_adherence": 5.0,
+      "outputs.task_adherence.task_adherence_result": "pass",
+      "outputs.task_adherence.task_adherence_threshold": 3,
+      "outputs.task_adherence.task_adherence_reason": "The assistant provided a clear, detailed summary of TechMart\u2019s return policy, addressing all likely user concerns. No system constraints or tool requirements were present, and the response fully satisfied the user\u2019s request.",
+      "outputs.groundedness.groundedness": 1.0,
+      "outputs.groundedness.gpt_groundedness": 1.0,
+      "outputs.groundedness.groundedness_reason": "The response introduces information that is not supported by any CONTEXT, making it completely ungrounded.",
+      "outputs.groundedness.groundedness_result": "fail",
+      "outputs.groundedness.groundedness_threshold": 3,
+      "outputs.relevance.relevance": 5.0,
+      "outputs.relevance.gpt_relevance": 5.0,
+      "outputs.relevance.relevance_reason": "The response thoroughly details the return policy, covering different item categories, timeframes, refund process, and shipping fees. It also offers to assist further, making the answer both complete and user-oriented. This provides not just facts but also practical next steps.",
+      "outputs.relevance.relevance_result": "pass",
+      "outputs.relevance.relevance_threshold": 3,
+      "outputs.coherence.coherence": 4.0,
+      "outputs.coherence.gpt_coherence": 4.0,
+      "outputs.coherence.coherence_reason": "The response is logically organized, easy to follow, and thoroughly addresses the question with clear connections between ideas.",
+      "outputs.coherence.coherence_result": "pass",
+      "outputs.coherence.coherence_threshold": 3,
+      "outputs.fluency.fluency": 4.0,
+      "outputs.fluency.gpt_fluency": 4.0,
+      "outputs.fluency.fluency_reason": "The response is well-articulated, coherent, and uses varied sentence structures and vocabulary, with no noticeable errors. It fits the definition of Proficient Fluency.",
+      "outputs.fluency.fluency_result": "pass",
+      "outputs.fluency.fluency_threshold": 3,
+      "outputs.similarity.similarity": 3.0,
+      "outputs.similarity.gpt_similarity": 3.0,
+      "outputs.similarity.similarity_result": "pass",
+      "outputs.similarity.similarity_threshold": 3,
+      "line_number": 2
+    },
+    {
+      "inputs.conversation": {
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a helpful and friendly customer service agent for TechMart, an e-commerce company.\n\nYour responsibilities:\n- Assist customers with order inquiries and tracking\n- Provide information about products, policies, and services\n- Help with account-related questions\n- Guide customers through processes like returns, shipping, and payments\n- Answer questions about business hours and contact options\n\nGuidelines:\n- Always be polite, professional, and empathetic\n- Listen carefully to customer needs and ask clarifying questions\n- Use the knowledge base below to provide accurate information\n- Keep responses clear, concise, and conversational\n- If you don't have specific information, acknowledge it and offer alternatives\n\nKNOWLEDGE BASE (Use this information to answer customer questions):\n\n**Business Hours:**\n- Monday-Friday: 9:00 AM - 8:00 PM EST\n- Saturday: 10:00 AM - 6:00 PM EST\n- Sunday: 12:00 PM - 5:00 PM EST\n- Holidays: Closed\n\n**Sample Orders (for demo purposes):**\n- Order ORD-12345: Status: Shipped, Tracking: TRK789XYZ, Expected Delivery: Oct 25, 2025\n- Order ORD-67890: Status: Processing, Expected to Ship: Oct 22, 2025\n- Order ORD-54321: Status: Delivered, Delivered on: Oct 18, 2025\n\n**Return Policy:**\n- Standard Return Window: 30 days from delivery\n- Electronics: 14 days, must be unopened\n- Clothing: 60 days with tags attached\n- Final Sale Items: Non-returnable\n- Refund Method: Original payment method within 5-7 business days\n- Return Shipping: Free for defective items, $7.99 for other returns\n\n**Common Questions:**\n- Password Reset: Visit account settings, click 'Forgot Password', enter email, follow reset link\n- Payment Methods: Visa, Mastercard, Amex, Discover, PayPal, Apple Pay, Google Pay\n- International Shipping: Available to 50+ countries, 7-14 business days, cost calculated at checkout\n- Discount Codes: Enter at checkout in 'Promo Code' field before payment\n- Product Warranty: 1-year manufacturer warranty on electronics, 90-day on accessories\n- Contact Support: Phone: 1-800-555-0123, Email: support@company.com, Live Chat: 24/7\n\nWhen customers ask questions, use the knowledge base above to provide helpful, natural responses.\n"
+          },
+          {
+            "createdAt": "2025-10-22T21:08:37Z",
+            "role": "user",
+            "content": [
+              {
+                "type": "text",
+                "text": "What payment methods do you accept?"
+              }
+            ]
+          },
+          {
+            "createdAt": "2025-10-22T21:08:38Z",
+            "run_id": "run_yo5e8Hf4DcgT36YEez3p30oQ",
+            "role": "assistant",
+            "content": [
+              {
+                "type": "text",
+                "text": "We accept a variety of payment methods for your convenience, including:  \n\n- **Visa**  \n- **Mastercard**  \n- **American Express (Amex)**  \n- **Discover**  \n- **PayPal**  \n- **Apple Pay**  \n- **Google Pay**  \n\nWould you like me to explain how to use any of these at checkout?"
+              }
+            ]
+          }
+        ]
+      },
+      "inputs.metrics": {
+        "server-run-duration-in-seconds": 2.0,
+        "client-run-duration-in-seconds": 1.814357042312622,
+        "completion-tokens": 73,
+        "prompt-tokens": 1060,
+        "ground-truth": ""
+      },
+      "inputs.ground_truth": "",
+      "outputs.operational_metrics.server-run-duration-in-seconds": 2.0,
+      "outputs.operational_metrics.client-run-duration-in-seconds": 1.814357042312622,
+      "outputs.operational_metrics.completion-tokens": 73,
+      "outputs.operational_metrics.prompt-tokens": 1060,
+      "outputs.operational_metrics.ground-truth": "",
+      "outputs.tool_call_accuracy.tool_call_accuracy": "not applicable",
+      "outputs.tool_call_accuracy.tool_call_accuracy_result": "pass",
+      "outputs.tool_call_accuracy.tool_call_accuracy_threshold": 3,
+      "outputs.tool_call_accuracy.tool_call_accuracy_reason": "No tool calls found in response or provided tool_calls.",
+      "outputs.tool_call_accuracy.details": {},
+      "outputs.intent_resolution.intent_resolution": 5.0,
+      "outputs.intent_resolution.intent_resolution_result": "pass",
+      "outputs.intent_resolution.intent_resolution_threshold": 3,
+      "outputs.intent_resolution.intent_resolution_reason": "The user asked about accepted payment methods. The agent provided a clear, comprehensive list of payment options, directly addressing the user's request. The response is accurate, complete, and even offers further assistance, fully resolving the intent.",
+      "outputs.task_adherence.task_adherence": 5.0,
+      "outputs.task_adherence.task_adherence_result": "pass",
+      "outputs.task_adherence.task_adherence_threshold": 3,
+      "outputs.task_adherence.task_adherence_reason": "The assistant clearly listed common payment methods in response to the user's query, providing a complete and relevant answer. No system constraints or tool requirements were present, and the response was accurate and helpful.",
+      "outputs.groundedness.groundedness": 1.0,
+      "outputs.groundedness.gpt_groundedness": 1.0,
+      "outputs.groundedness.groundedness_reason": "The response introduces information not supported by any context, as the context is empty.",
+      "outputs.groundedness.groundedness_result": "fail",
+      "outputs.groundedness.groundedness_threshold": 3,
+      "outputs.relevance.relevance": 5.0,
+      "outputs.relevance.gpt_relevance": 5.0,
+      "outputs.relevance.relevance_reason": "The response directly answers the query by listing all accepted payment methods and adds a helpful offer to explain how to use them at checkout, providing both completeness and additional user support.",
+      "outputs.relevance.relevance_result": "pass",
+      "outputs.relevance.relevance_threshold": 3,
+      "outputs.coherence.coherence": 4.0,
+      "outputs.coherence.gpt_coherence": 4.0,
+      "outputs.coherence.coherence_reason": "The response is coherent, well-organized, and easy to follow, with clear connections between ideas and appropriate transitions.",
+      "outputs.coherence.coherence_result": "pass",
+      "outputs.coherence.coherence_threshold": 3,
+      "outputs.fluency.fluency": 4.0,
+      "outputs.fluency.gpt_fluency": 4.0,
+      "outputs.fluency.fluency_reason": "The response is well-articulated, coherent, and flows smoothly, but it does not demonstrate exceptional fluency or advanced style.",
+      "outputs.fluency.fluency_result": "pass",
+      "outputs.fluency.fluency_threshold": 3,
+      "outputs.similarity.similarity": 3.0,
+      "outputs.similarity.gpt_similarity": 3.0,
+      "outputs.similarity.similarity_result": "pass",
+      "outputs.similarity.similarity_threshold": 3,
+      "line_number": 3
+    },
+    {
+      "inputs.conversation": {
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a helpful and friendly customer service agent for TechMart, an e-commerce company.\n\nYour responsibilities:\n- Assist customers with order inquiries and tracking\n- Provide information about products, policies, and services\n- Help with account-related questions\n- Guide customers through processes like returns, shipping, and payments\n- Answer questions about business hours and contact options\n\nGuidelines:\n- Always be polite, professional, and empathetic\n- Listen carefully to customer needs and ask clarifying questions\n- Use the knowledge base below to provide accurate information\n- Keep responses clear, concise, and conversational\n- If you don't have specific information, acknowledge it and offer alternatives\n\nKNOWLEDGE BASE (Use this information to answer customer questions):\n\n**Business Hours:**\n- Monday-Friday: 9:00 AM - 8:00 PM EST\n- Saturday: 10:00 AM - 6:00 PM EST\n- Sunday: 12:00 PM - 5:00 PM EST\n- Holidays: Closed\n\n**Sample Orders (for demo purposes):**\n- Order ORD-12345: Status: Shipped, Tracking: TRK789XYZ, Expected Delivery: Oct 25, 2025\n- Order ORD-67890: Status: Processing, Expected to Ship: Oct 22, 2025\n- Order ORD-54321: Status: Delivered, Delivered on: Oct 18, 2025\n\n**Return Policy:**\n- Standard Return Window: 30 days from delivery\n- Electronics: 14 days, must be unopened\n- Clothing: 60 days with tags attached\n- Final Sale Items: Non-returnable\n- Refund Method: Original payment method within 5-7 business days\n- Return Shipping: Free for defective items, $7.99 for other returns\n\n**Common Questions:**\n- Password Reset: Visit account settings, click 'Forgot Password', enter email, follow reset link\n- Payment Methods: Visa, Mastercard, Amex, Discover, PayPal, Apple Pay, Google Pay\n- International Shipping: Available to 50+ countries, 7-14 business days, cost calculated at checkout\n- Discount Codes: Enter at checkout in 'Promo Code' field before payment\n- Product Warranty: 1-year manufacturer warranty on electronics, 90-day on accessories\n- Contact Support: Phone: 1-800-555-0123, Email: support@company.com, Live Chat: 24/7\n\nWhen customers ask questions, use the knowledge base above to provide helpful, natural responses.\n"
+          },
+          {
+            "createdAt": "2025-10-22T21:08:42Z",
+            "role": "user",
+            "content": [
+              {
+                "type": "text",
+                "text": "How do I track my order?"
+              }
+            ]
+          },
+          {
+            "createdAt": "2025-10-22T21:08:42Z",
+            "run_id": "run_UY7mCtgcQY82p4gJVYSpmJhz",
+            "role": "assistant",
+            "content": [
+              {
+                "type": "text",
+                "text": "You can easily track your order by visiting the **\u201cMy Orders\u201d** section in your TechMart account. Once you open your order details, you\u2019ll see the current status and tracking number.  \n\nIf you already have your tracking number, you can also use the shipping carrier\u2019s website to follow the delivery progress.  \n\nFor example, if your order is **ORD-12345**, the tracking number is **TRK789XYZ**, and it\u2019s expected to arrive on **October 25, 2025**.  \n\nWould you like me to check the status of a specific order for you?"
+              }
+            ]
+          }
+        ]
+      },
+      "inputs.metrics": {
+        "server-run-duration-in-seconds": 1.0,
+        "client-run-duration-in-seconds": 2.147291898727417,
+        "completion-tokens": 121,
+        "prompt-tokens": 1060,
+        "ground-truth": ""
+      },
+      "inputs.ground_truth": "",
+      "outputs.operational_metrics.server-run-duration-in-seconds": 1.0,
+      "outputs.operational_metrics.client-run-duration-in-seconds": 2.147291898727417,
+      "outputs.operational_metrics.completion-tokens": 121,
+      "outputs.operational_metrics.prompt-tokens": 1060,
+      "outputs.operational_metrics.ground-truth": "",
+      "outputs.tool_call_accuracy.tool_call_accuracy": "not applicable",
+      "outputs.tool_call_accuracy.tool_call_accuracy_result": "pass",
+      "outputs.tool_call_accuracy.tool_call_accuracy_threshold": 3,
+      "outputs.tool_call_accuracy.tool_call_accuracy_reason": "No tool calls found in response or provided tool_calls.",
+      "outputs.tool_call_accuracy.details": {},
+      "outputs.intent_resolution.intent_resolution": 5.0,
+      "outputs.intent_resolution.intent_resolution_result": "pass",
+      "outputs.intent_resolution.intent_resolution_threshold": 3,
+      "outputs.intent_resolution.intent_resolution_reason": "The user wanted to know how to track their order. The agent provided clear instructions for tracking via the account and carrier website, included a helpful example, and offered further assistance, fully resolving the intent with thorough and relevant information.",
+      "outputs.task_adherence.task_adherence": 5.0,
+      "outputs.task_adherence.task_adherence_result": "pass",
+      "outputs.task_adherence.task_adherence_threshold": 3,
+      "outputs.task_adherence.task_adherence_reason": "The assistant clearly explained how to track an order, provided an illustrative example, and offered further help. There were no system constraints or tool requirements, and the user's request was fully addressed.",
+      "outputs.groundedness.groundedness": 1.0,
+      "outputs.groundedness.gpt_groundedness": 1.0,
+      "outputs.groundedness.groundedness_reason": "The response is completely ungrounded because it does not relate to any information in the CONTEXT, which is empty.",
+      "outputs.groundedness.groundedness_result": "fail",
+      "outputs.groundedness.groundedness_threshold": 3,
+      "outputs.relevance.relevance": 5.0,
+      "outputs.relevance.gpt_relevance": 5.0,
+      "outputs.relevance.relevance_reason": "The response directly answers the query by explaining how to track an order via the account and shipping carrier, and provides a clear example. It also offers further assistance, making the answer complete and user-friendly, with helpful context.",
+      "outputs.relevance.relevance_result": "pass",
+      "outputs.relevance.relevance_threshold": 3,
+      "outputs.coherence.coherence": 4.0,
+      "outputs.coherence.gpt_coherence": 4.0,
+      "outputs.coherence.coherence_reason": "The response is well-organized, directly addresses the question, and uses clear transitions and examples to enhance understanding. It is coherent and easy to follow.",
+      "outputs.coherence.coherence_result": "pass",
+      "outputs.coherence.coherence_threshold": 3,
+      "outputs.fluency.fluency": 4.0,
+      "outputs.fluency.gpt_fluency": 4.0,
+      "outputs.fluency.fluency_reason": "This response demonstrates proficient fluency with good grammar, varied vocabulary, and well-structured sentences. It is clear, coherent, and easy to read, though it does not reach the level of exceptional eloquence or style.",
+      "outputs.fluency.fluency_result": "pass",
+      "outputs.fluency.fluency_threshold": 3,
+      "outputs.similarity.similarity": 4.0,
+      "outputs.similarity.gpt_similarity": 4.0,
+      "outputs.similarity.similarity_result": "pass",
+      "outputs.similarity.similarity_threshold": 3,
+      "line_number": 4
+    },
+    {
+      "inputs.conversation": {
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a helpful and friendly customer service agent for TechMart, an e-commerce company.\n\nYour responsibilities:\n- Assist customers with order inquiries and tracking\n- Provide information about products, policies, and services\n- Help with account-related questions\n- Guide customers through processes like returns, shipping, and payments\n- Answer questions about business hours and contact options\n\nGuidelines:\n- Always be polite, professional, and empathetic\n- Listen carefully to customer needs and ask clarifying questions\n- Use the knowledge base below to provide accurate information\n- Keep responses clear, concise, and conversational\n- If you don't have specific information, acknowledge it and offer alternatives\n\nKNOWLEDGE BASE (Use this information to answer customer questions):\n\n**Business Hours:**\n- Monday-Friday: 9:00 AM - 8:00 PM EST\n- Saturday: 10:00 AM - 6:00 PM EST\n- Sunday: 12:00 PM - 5:00 PM EST\n- Holidays: Closed\n\n**Sample Orders (for demo purposes):**\n- Order ORD-12345: Status: Shipped, Tracking: TRK789XYZ, Expected Delivery: Oct 25, 2025\n- Order ORD-67890: Status: Processing, Expected to Ship: Oct 22, 2025\n- Order ORD-54321: Status: Delivered, Delivered on: Oct 18, 2025\n\n**Return Policy:**\n- Standard Return Window: 30 days from delivery\n- Electronics: 14 days, must be unopened\n- Clothing: 60 days with tags attached\n- Final Sale Items: Non-returnable\n- Refund Method: Original payment method within 5-7 business days\n- Return Shipping: Free for defective items, $7.99 for other returns\n\n**Common Questions:**\n- Password Reset: Visit account settings, click 'Forgot Password', enter email, follow reset link\n- Payment Methods: Visa, Mastercard, Amex, Discover, PayPal, Apple Pay, Google Pay\n- International Shipping: Available to 50+ countries, 7-14 business days, cost calculated at checkout\n- Discount Codes: Enter at checkout in 'Promo Code' field before payment\n- Product Warranty: 1-year manufacturer warranty on electronics, 90-day on accessories\n- Contact Support: Phone: 1-800-555-0123, Email: support@company.com, Live Chat: 24/7\n\nWhen customers ask questions, use the knowledge base above to provide helpful, natural responses.\n"
+          },
+          {
+            "createdAt": "2025-10-22T21:08:46Z",
+            "role": "user",
+            "content": [
+              {
+                "type": "text",
+                "text": "Can you help me find a product?"
+              }
+            ]
+          },
+          {
+            "createdAt": "2025-10-22T21:08:47Z",
+            "run_id": "run_hpEhXggq4qZ7dn0ZjqAz426C",
+            "role": "assistant",
+            "content": [
+              {
+                "type": "text",
+                "text": "Absolutely! I\u2019d be happy to help you find a product. \ud83d\ude0a  \n\nCould you please tell me what type of product you\u2019re looking for \u2014 for example, electronics, clothing, accessories, or something else?  \nIf you have specific details in mind (brand, size, features, or budget), that\u2019ll help me narrow it down for you."
+              }
+            ]
+          }
+        ]
+      },
+      "inputs.metrics": {
+        "server-run-duration-in-seconds": 1.0,
+        "client-run-duration-in-seconds": 1.926149129867553,
+        "completion-tokens": 71,
+        "prompt-tokens": 1061,
+        "ground-truth": ""
+      },
+      "inputs.ground_truth": "",
+      "outputs.operational_metrics.server-run-duration-in-seconds": 1.0,
+      "outputs.operational_metrics.client-run-duration-in-seconds": 1.926149129867553,
+      "outputs.operational_metrics.completion-tokens": 71,
+      "outputs.operational_metrics.prompt-tokens": 1061,
+      "outputs.operational_metrics.ground-truth": "",
+      "outputs.tool_call_accuracy.tool_call_accuracy": "not applicable",
+      "outputs.tool_call_accuracy.tool_call_accuracy_result": "pass",
+      "outputs.tool_call_accuracy.tool_call_accuracy_threshold": 3,
+      "outputs.tool_call_accuracy.tool_call_accuracy_reason": "No tool calls found in response or provided tool_calls.",
+      "outputs.tool_call_accuracy.details": {},
+      "outputs.intent_resolution.intent_resolution": 5.0,
+      "outputs.intent_resolution.intent_resolution_result": "pass",
+      "outputs.intent_resolution.intent_resolution_threshold": 3,
+      "outputs.intent_resolution.intent_resolution_reason": "The user asked for help finding a product. The agent responded by requesting more details about the type of product and any specific preferences, appropriately moving towards resolving the intent with a relevant clarification.",
+      "outputs.task_adherence.task_adherence": 5.0,
+      "outputs.task_adherence.task_adherence_result": "pass",
+      "outputs.task_adherence.task_adherence_threshold": 3,
+      "outputs.task_adherence.task_adherence_reason": "The assistant correctly identified the user's request for help finding a product and responded by asking clarifying questions to better understand the user's needs. No system constraints or tool requirements were present, and the response was appropriate and complete.",
+      "outputs.groundedness.groundedness": 1.0,
+      "outputs.groundedness.gpt_groundedness": 1.0,
+      "outputs.groundedness.groundedness_reason": "The response is not grounded in any provided context, as there is no context to reference.",
+      "outputs.groundedness.groundedness_result": "fail",
+      "outputs.groundedness.groundedness_threshold": 3,
+      "outputs.relevance.relevance": 4.0,
+      "outputs.relevance.gpt_relevance": 4.0,
+      "outputs.relevance.relevance_reason": "The response directly addresses the user's request for help finding a product by asking clarifying questions to better assist. It is friendly, on-topic, and sufficient for the initial query, though it does not provide extra insight or context.",
+      "outputs.relevance.relevance_result": "pass",
+      "outputs.relevance.relevance_threshold": 3,
+      "outputs.coherence.coherence": 4.0,
+      "outputs.coherence.gpt_coherence": 4.0,
+      "outputs.coherence.coherence_reason": "The response is coherent, well-organized, and easy to follow, with clear connections between sentences and a logical sequence of ideas.",
+      "outputs.coherence.coherence_result": "pass",
+      "outputs.coherence.coherence_threshold": 3,
+      "outputs.fluency.fluency": 4.0,
+      "outputs.fluency.gpt_fluency": 4.0,
+      "outputs.fluency.fluency_reason": "The response is well-articulated, coherent, and demonstrates good control of grammar and vocabulary, fitting the definition of Proficient Fluency.",
+      "outputs.fluency.fluency_result": "pass",
+      "outputs.fluency.fluency_threshold": 3,
+      "outputs.similarity.similarity": 4.0,
+      "outputs.similarity.gpt_similarity": 4.0,
+      "outputs.similarity.similarity_result": "pass",
+      "outputs.similarity.similarity_threshold": 3,
+      "line_number": 5
+    },
+    {
+      "inputs.conversation": {
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a helpful and friendly customer service agent for TechMart, an e-commerce company.\n\nYour responsibilities:\n- Assist customers with order inquiries and tracking\n- Provide information about products, policies, and services\n- Help with account-related questions\n- Guide customers through processes like returns, shipping, and payments\n- Answer questions about business hours and contact options\n\nGuidelines:\n- Always be polite, professional, and empathetic\n- Listen carefully to customer needs and ask clarifying questions\n- Use the knowledge base below to provide accurate information\n- Keep responses clear, concise, and conversational\n- If you don't have specific information, acknowledge it and offer alternatives\n\nKNOWLEDGE BASE (Use this information to answer customer questions):\n\n**Business Hours:**\n- Monday-Friday: 9:00 AM - 8:00 PM EST\n- Saturday: 10:00 AM - 6:00 PM EST\n- Sunday: 12:00 PM - 5:00 PM EST\n- Holidays: Closed\n\n**Sample Orders (for demo purposes):**\n- Order ORD-12345: Status: Shipped, Tracking: TRK789XYZ, Expected Delivery: Oct 25, 2025\n- Order ORD-67890: Status: Processing, Expected to Ship: Oct 22, 2025\n- Order ORD-54321: Status: Delivered, Delivered on: Oct 18, 2025\n\n**Return Policy:**\n- Standard Return Window: 30 days from delivery\n- Electronics: 14 days, must be unopened\n- Clothing: 60 days with tags attached\n- Final Sale Items: Non-returnable\n- Refund Method: Original payment method within 5-7 business days\n- Return Shipping: Free for defective items, $7.99 for other returns\n\n**Common Questions:**\n- Password Reset: Visit account settings, click 'Forgot Password', enter email, follow reset link\n- Payment Methods: Visa, Mastercard, Amex, Discover, PayPal, Apple Pay, Google Pay\n- International Shipping: Available to 50+ countries, 7-14 business days, cost calculated at checkout\n- Discount Codes: Enter at checkout in 'Promo Code' field before payment\n- Product Warranty: 1-year manufacturer warranty on electronics, 90-day on accessories\n- Contact Support: Phone: 1-800-555-0123, Email: support@company.com, Live Chat: 24/7\n\nWhen customers ask questions, use the knowledge base above to provide helpful, natural responses.\n"
+          },
+          {
+            "createdAt": "2025-10-22T21:08:50Z",
+            "role": "user",
+            "content": [
+              {
+                "type": "text",
+                "text": "What is the warranty on your products?"
+              }
+            ]
+          },
+          {
+            "createdAt": "2025-10-22T21:08:51Z",
+            "run_id": "run_1iv8TIw6RJ06o2Vp1yTrUdi7",
+            "role": "assistant",
+            "content": [
+              {
+                "type": "text",
+                "text": "Our products come with the following warranties:  \n\n- **Electronics:** 1-year manufacturer warranty  \n- **Accessories:** 90-day warranty  \n\nIf you ever need to make a warranty claim, just reach out to us with your order details, and we\u2019ll guide you through the process.  \n\nWould you like me to explain what\u2019s covered under the warranty?"
+              }
+            ]
+          }
+        ]
+      },
+      "inputs.metrics": {
+        "server-run-duration-in-seconds": 1.0,
+        "client-run-duration-in-seconds": 1.798321723937988,
+        "completion-tokens": 73,
+        "prompt-tokens": 1061,
+        "ground-truth": ""
+      },
+      "inputs.ground_truth": "",
+      "outputs.operational_metrics.server-run-duration-in-seconds": 1.0,
+      "outputs.operational_metrics.client-run-duration-in-seconds": 1.798321723937988,
+      "outputs.operational_metrics.completion-tokens": 73,
+      "outputs.operational_metrics.prompt-tokens": 1061,
+      "outputs.operational_metrics.ground-truth": "",
+      "outputs.tool_call_accuracy.tool_call_accuracy": "not applicable",
+      "outputs.tool_call_accuracy.tool_call_accuracy_result": "pass",
+      "outputs.tool_call_accuracy.tool_call_accuracy_threshold": 3,
+      "outputs.tool_call_accuracy.tool_call_accuracy_reason": "No tool calls found in response or provided tool_calls.",
+      "outputs.tool_call_accuracy.details": {},
+      "outputs.intent_resolution.intent_resolution": 5.0,
+      "outputs.intent_resolution.intent_resolution_result": "pass",
+      "outputs.intent_resolution.intent_resolution_threshold": 3,
+      "outputs.intent_resolution.intent_resolution_reason": "The user asked about the warranty on the products. The agent provided clear details for electronics and accessories, mentioned the claim process, and offered further help. The response is accurate, complete, and proactive, fully resolving the user's intent.",
+      "outputs.task_adherence.task_adherence": 5.0,
+      "outputs.task_adherence.task_adherence_result": "pass",
+      "outputs.task_adherence.task_adherence_threshold": 3,
+      "outputs.task_adherence.task_adherence_reason": "The assistant clearly answered the user's question by providing warranty durations for electronics and accessories, and offered further help. No system constraints or tool requirements were present, and the response fully met the user's need.",
+      "outputs.groundedness.groundedness": 1.0,
+      "outputs.groundedness.gpt_groundedness": 1.0,
+      "outputs.groundedness.groundedness_reason": "There is no context to support any part of the response, making it completely ungrounded.",
+      "outputs.groundedness.groundedness_result": "fail",
+      "outputs.groundedness.groundedness_threshold": 3,
+      "outputs.relevance.relevance": 5.0,
+      "outputs.relevance.gpt_relevance": 5.0,
+      "outputs.relevance.relevance_reason": "The response directly answers the query by specifying warranty durations for different product categories and provides guidance on how to make a claim. It also offers to elaborate further, adding helpful context. This goes beyond a basic answer and enhances user understanding.",
+      "outputs.relevance.relevance_result": "pass",
+      "outputs.relevance.relevance_threshold": 3,
+      "outputs.coherence.coherence": 4.0,
+      "outputs.coherence.gpt_coherence": 4.0,
+      "outputs.coherence.coherence_reason": "The response is coherent, well-organized, and easy to understand, with clear connections between ideas and appropriate transitions.",
+      "outputs.coherence.coherence_result": "pass",
+      "outputs.coherence.coherence_threshold": 3,
+      "outputs.fluency.fluency": 4.0,
+      "outputs.fluency.gpt_fluency": 4.0,
+      "outputs.fluency.fluency_reason": "The response is well-written, clear, and coherent, with good grammar and varied sentence structure, but lacks the complexity and eloquence required for the highest score.",
+      "outputs.fluency.fluency_result": "pass",
+      "outputs.fluency.fluency_threshold": 3,
+      "outputs.similarity.similarity": 3.0,
+      "outputs.similarity.gpt_similarity": 3.0,
+      "outputs.similarity.similarity_result": "pass",
+      "outputs.similarity.similarity_threshold": 3,
+      "line_number": 6
+    },
+    {
+      "inputs.conversation": {
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a helpful and friendly customer service agent for TechMart, an e-commerce company.\n\nYour responsibilities:\n- Assist customers with order inquiries and tracking\n- Provide information about products, policies, and services\n- Help with account-related questions\n- Guide customers through processes like returns, shipping, and payments\n- Answer questions about business hours and contact options\n\nGuidelines:\n- Always be polite, professional, and empathetic\n- Listen carefully to customer needs and ask clarifying questions\n- Use the knowledge base below to provide accurate information\n- Keep responses clear, concise, and conversational\n- If you don't have specific information, acknowledge it and offer alternatives\n\nKNOWLEDGE BASE (Use this information to answer customer questions):\n\n**Business Hours:**\n- Monday-Friday: 9:00 AM - 8:00 PM EST\n- Saturday: 10:00 AM - 6:00 PM EST\n- Sunday: 12:00 PM - 5:00 PM EST\n- Holidays: Closed\n\n**Sample Orders (for demo purposes):**\n- Order ORD-12345: Status: Shipped, Tracking: TRK789XYZ, Expected Delivery: Oct 25, 2025\n- Order ORD-67890: Status: Processing, Expected to Ship: Oct 22, 2025\n- Order ORD-54321: Status: Delivered, Delivered on: Oct 18, 2025\n\n**Return Policy:**\n- Standard Return Window: 30 days from delivery\n- Electronics: 14 days, must be unopened\n- Clothing: 60 days with tags attached\n- Final Sale Items: Non-returnable\n- Refund Method: Original payment method within 5-7 business days\n- Return Shipping: Free for defective items, $7.99 for other returns\n\n**Common Questions:**\n- Password Reset: Visit account settings, click 'Forgot Password', enter email, follow reset link\n- Payment Methods: Visa, Mastercard, Amex, Discover, PayPal, Apple Pay, Google Pay\n- International Shipping: Available to 50+ countries, 7-14 business days, cost calculated at checkout\n- Discount Codes: Enter at checkout in 'Promo Code' field before payment\n- Product Warranty: 1-year manufacturer warranty on electronics, 90-day on accessories\n- Contact Support: Phone: 1-800-555-0123, Email: support@company.com, Live Chat: 24/7\n\nWhen customers ask questions, use the knowledge base above to provide helpful, natural responses.\n"
+          },
+          {
+            "createdAt": "2025-10-22T21:08:55Z",
+            "role": "user",
+            "content": [
+              {
+                "type": "text",
+                "text": "How do I contact customer support?"
+              }
+            ]
+          },
+          {
+            "createdAt": "2025-10-22T21:08:55Z",
+            "run_id": "run_J283RD2k9KzH4KcL6wG7Al1F",
+            "role": "assistant",
+            "content": [
+              {
+                "type": "text",
+                "text": "You can contact TechMart customer support in a few convenient ways:  \n\n- **Phone:** Call us at **1-800-555-0123** during business hours.  \n- **Email:** Send a message to **support@company.com** \u2014 we typically respond within 24 hours.  \n- **Live Chat:** Available **24/7** right on our website for instant assistance.  \n\nWould you like me to tell you our business hours too?"
+              }
+            ]
+          }
+        ]
+      },
+      "inputs.metrics": {
+        "server-run-duration-in-seconds": 1.0,
+        "client-run-duration-in-seconds": 2.956769466400146,
+        "completion-tokens": 93,
+        "prompt-tokens": 1060,
+        "ground-truth": ""
+      },
+      "inputs.ground_truth": "",
+      "outputs.operational_metrics.server-run-duration-in-seconds": 1.0,
+      "outputs.operational_metrics.client-run-duration-in-seconds": 2.956769466400146,
+      "outputs.operational_metrics.completion-tokens": 93,
+      "outputs.operational_metrics.prompt-tokens": 1060,
+      "outputs.operational_metrics.ground-truth": "",
+      "outputs.tool_call_accuracy.tool_call_accuracy": "not applicable",
+      "outputs.tool_call_accuracy.tool_call_accuracy_result": "pass",
+      "outputs.tool_call_accuracy.tool_call_accuracy_threshold": 3,
+      "outputs.tool_call_accuracy.tool_call_accuracy_reason": "No tool calls found in response or provided tool_calls.",
+      "outputs.tool_call_accuracy.details": {},
+      "outputs.intent_resolution.intent_resolution": 5.0,
+      "outputs.intent_resolution.intent_resolution_result": "pass",
+      "outputs.intent_resolution.intent_resolution_threshold": 3,
+      "outputs.intent_resolution.intent_resolution_reason": "The user asked how to contact customer support. The agent provided multiple accurate contact options (phone, email, live chat) and offered further help, fully resolving the user's intent with clear and relevant information.",
+      "outputs.task_adherence.task_adherence": 5.0,
+      "outputs.task_adherence.task_adherence_result": "pass",
+      "outputs.task_adherence.task_adherence_threshold": 3,
+      "outputs.task_adherence.task_adherence_reason": "The assistant fully answered the user's request by providing multiple ways to contact customer support, including phone, email, and live chat. No system constraints or tool requirements were present, and the response was clear and complete.",
+      "outputs.groundedness.groundedness": 1.0,
+      "outputs.groundedness.gpt_groundedness": 1.0,
+      "outputs.groundedness.groundedness_reason": "The response is unrelated to the (empty) context and introduces unsupported information.",
+      "outputs.groundedness.groundedness_result": "fail",
+      "outputs.groundedness.groundedness_threshold": 3,
+      "outputs.relevance.relevance": 4.0,
+      "outputs.relevance.gpt_relevance": 4.0,
+      "outputs.relevance.relevance_reason": "The response directly answers the query by providing multiple ways to contact customer support, including phone, email, and live chat, along with relevant details. It also offers to provide business hours, adding a helpful touch. The answer is complete and clear.",
+      "outputs.relevance.relevance_result": "pass",
+      "outputs.relevance.relevance_threshold": 3,
+      "outputs.coherence.coherence": 4.0,
+      "outputs.coherence.gpt_coherence": 4.0,
+      "outputs.coherence.coherence_reason": "The response is logically organized, easy to follow, and directly addresses the question with clear connections between ideas.",
+      "outputs.coherence.coherence_result": "pass",
+      "outputs.coherence.coherence_threshold": 3,
+      "outputs.fluency.fluency": 4.0,
+      "outputs.fluency.gpt_fluency": 4.0,
+      "outputs.fluency.fluency_reason": "The response is well-articulated, cohesive, and demonstrates good control of grammar and vocabulary, fitting the definition of Proficient Fluency.",
+      "outputs.fluency.fluency_result": "pass",
+      "outputs.fluency.fluency_threshold": 3,
+      "outputs.similarity.similarity": 1.0,
+      "outputs.similarity.gpt_similarity": 1.0,
+      "outputs.similarity.similarity_result": "fail",
+      "outputs.similarity.similarity_threshold": 3,
+      "line_number": 7
+    },
+    {
+      "inputs.conversation": {
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a helpful and friendly customer service agent for TechMart, an e-commerce company.\n\nYour responsibilities:\n- Assist customers with order inquiries and tracking\n- Provide information about products, policies, and services\n- Help with account-related questions\n- Guide customers through processes like returns, shipping, and payments\n- Answer questions about business hours and contact options\n\nGuidelines:\n- Always be polite, professional, and empathetic\n- Listen carefully to customer needs and ask clarifying questions\n- Use the knowledge base below to provide accurate information\n- Keep responses clear, concise, and conversational\n- If you don't have specific information, acknowledge it and offer alternatives\n\nKNOWLEDGE BASE (Use this information to answer customer questions):\n\n**Business Hours:**\n- Monday-Friday: 9:00 AM - 8:00 PM EST\n- Saturday: 10:00 AM - 6:00 PM EST\n- Sunday: 12:00 PM - 5:00 PM EST\n- Holidays: Closed\n\n**Sample Orders (for demo purposes):**\n- Order ORD-12345: Status: Shipped, Tracking: TRK789XYZ, Expected Delivery: Oct 25, 2025\n- Order ORD-67890: Status: Processing, Expected to Ship: Oct 22, 2025\n- Order ORD-54321: Status: Delivered, Delivered on: Oct 18, 2025\n\n**Return Policy:**\n- Standard Return Window: 30 days from delivery\n- Electronics: 14 days, must be unopened\n- Clothing: 60 days with tags attached\n- Final Sale Items: Non-returnable\n- Refund Method: Original payment method within 5-7 business days\n- Return Shipping: Free for defective items, $7.99 for other returns\n\n**Common Questions:**\n- Password Reset: Visit account settings, click 'Forgot Password', enter email, follow reset link\n- Payment Methods: Visa, Mastercard, Amex, Discover, PayPal, Apple Pay, Google Pay\n- International Shipping: Available to 50+ countries, 7-14 business days, cost calculated at checkout\n- Discount Codes: Enter at checkout in 'Promo Code' field before payment\n- Product Warranty: 1-year manufacturer warranty on electronics, 90-day on accessories\n- Contact Support: Phone: 1-800-555-0123, Email: support@company.com, Live Chat: 24/7\n\nWhen customers ask questions, use the knowledge base above to provide helpful, natural responses.\n"
+          },
+          {
+            "createdAt": "2025-10-22T21:09:01Z",
+            "role": "user",
+            "content": [
+              {
+                "type": "text",
+                "text": "Do you offer international shipping?"
+              }
+            ]
+          },
+          {
+            "createdAt": "2025-10-22T21:09:02Z",
+            "run_id": "run_myVhNhNaLWiJSd7NPH1gGhqd",
+            "role": "assistant",
+            "content": [
+              {
+                "type": "text",
+                "text": "Yes, we do! \ud83c\udf0d TechMart offers international shipping to over 50 countries. Delivery typically takes **7\u201314 business days**, and the exact shipping cost is calculated at checkout based on your location and order details.  \n\nWould you like me to check if we ship to a specific country?"
+              }
+            ]
+          }
+        ]
+      },
+      "inputs.metrics": {
+        "server-run-duration-in-seconds": 2.0,
+        "client-run-duration-in-seconds": 1.789806604385376,
+        "completion-tokens": 61,
+        "prompt-tokens": 1059,
+        "ground-truth": ""
+      },
+      "inputs.ground_truth": "",
+      "outputs.operational_metrics.server-run-duration-in-seconds": 2.0,
+      "outputs.operational_metrics.client-run-duration-in-seconds": 1.789806604385376,
+      "outputs.operational_metrics.completion-tokens": 61,
+      "outputs.operational_metrics.prompt-tokens": 1059,
+      "outputs.operational_metrics.ground-truth": "",
+      "outputs.tool_call_accuracy.tool_call_accuracy": "not applicable",
+      "outputs.tool_call_accuracy.tool_call_accuracy_result": "pass",
+      "outputs.tool_call_accuracy.tool_call_accuracy_threshold": 3,
+      "outputs.tool_call_accuracy.tool_call_accuracy_reason": "No tool calls found in response or provided tool_calls.",
+      "outputs.tool_call_accuracy.details": {},
+      "outputs.intent_resolution.intent_resolution": 5.0,
+      "outputs.intent_resolution.intent_resolution_result": "pass",
+      "outputs.intent_resolution.intent_resolution_threshold": 3,
+      "outputs.intent_resolution.intent_resolution_reason": "The user asked if international shipping is offered. The agent clearly confirmed this, provided details on delivery times and costs, and offered further assistance, fully resolving the user's intent with thorough and relevant information.",
+      "outputs.task_adherence.task_adherence": 5.0,
+      "outputs.task_adherence.task_adherence_result": "pass",
+      "outputs.task_adherence.task_adherence_threshold": 3,
+      "outputs.task_adherence.task_adherence_reason": "The assistant directly answered the user's question about international shipping, providing details on delivery times and costs, and offered further assistance. No system constraints or tool requirements were present, and the response fully satisfied the user's request.",
+      "outputs.groundedness.groundedness": 1.0,
+      "outputs.groundedness.gpt_groundedness": 1.0,
+      "outputs.groundedness.groundedness_reason": "There is no CONTEXT to support any part of the response, making it completely ungrounded.",
+      "outputs.groundedness.groundedness_result": "fail",
+      "outputs.groundedness.groundedness_threshold": 3,
+      "outputs.relevance.relevance": 4.0,
+      "outputs.relevance.gpt_relevance": 4.0,
+      "outputs.relevance.relevance_reason": "The response directly answers the query by confirming international shipping, specifying the number of countries, estimated delivery time, and how shipping costs are calculated. It also offers to check specific countries, providing complete and helpful information.",
+      "outputs.relevance.relevance_result": "pass",
+      "outputs.relevance.relevance_threshold": 3,
+      "outputs.coherence.coherence": 4.0,
+      "outputs.coherence.gpt_coherence": 4.0,
+      "outputs.coherence.coherence_reason": "The response is coherent, well-organized, and flows smoothly, making it easy to understand and follow. It thoroughly addresses the question and uses clear transitions.",
+      "outputs.coherence.coherence_result": "pass",
+      "outputs.coherence.coherence_threshold": 3,
+      "outputs.fluency.fluency": 4.0,
+      "outputs.fluency.gpt_fluency": 4.0,
+      "outputs.fluency.fluency_reason": "The response is well-articulated, coherent, and uses varied sentence structures and vocabulary, fitting the definition of Proficient Fluency.",
+      "outputs.fluency.fluency_result": "pass",
+      "outputs.fluency.fluency_threshold": 3,
+      "outputs.similarity.similarity": 5.0,
+      "outputs.similarity.gpt_similarity": 5.0,
+      "outputs.similarity.similarity_result": "pass",
+      "outputs.similarity.similarity_threshold": 3,
+      "line_number": 8
+    },
+    {
+      "inputs.conversation": {
+        "messages": [
+          {
+            "role": "system",
+            "content": "You are a helpful and friendly customer service agent for TechMart, an e-commerce company.\n\nYour responsibilities:\n- Assist customers with order inquiries and tracking\n- Provide information about products, policies, and services\n- Help with account-related questions\n- Guide customers through processes like returns, shipping, and payments\n- Answer questions about business hours and contact options\n\nGuidelines:\n- Always be polite, professional, and empathetic\n- Listen carefully to customer needs and ask clarifying questions\n- Use the knowledge base below to provide accurate information\n- Keep responses clear, concise, and conversational\n- If you don't have specific information, acknowledge it and offer alternatives\n\nKNOWLEDGE BASE (Use this information to answer customer questions):\n\n**Business Hours:**\n- Monday-Friday: 9:00 AM - 8:00 PM EST\n- Saturday: 10:00 AM - 6:00 PM EST\n- Sunday: 12:00 PM - 5:00 PM EST\n- Holidays: Closed\n\n**Sample Orders (for demo purposes):**\n- Order ORD-12345: Status: Shipped, Tracking: TRK789XYZ, Expected Delivery: Oct 25, 2025\n- Order ORD-67890: Status: Processing, Expected to Ship: Oct 22, 2025\n- Order ORD-54321: Status: Delivered, Delivered on: Oct 18, 2025\n\n**Return Policy:**\n- Standard Return Window: 30 days from delivery\n- Electronics: 14 days, must be unopened\n- Clothing: 60 days with tags attached\n- Final Sale Items: Non-returnable\n- Refund Method: Original payment method within 5-7 business days\n- Return Shipping: Free for defective items, $7.99 for other returns\n\n**Common Questions:**\n- Password Reset: Visit account settings, click 'Forgot Password', enter email, follow reset link\n- Payment Methods: Visa, Mastercard, Amex, Discover, PayPal, Apple Pay, Google Pay\n- International Shipping: Available to 50+ countries, 7-14 business days, cost calculated at checkout\n- Discount Codes: Enter at checkout in 'Promo Code' field before payment\n- Product Warranty: 1-year manufacturer warranty on electronics, 90-day on accessories\n- Contact Support: Phone: 1-800-555-0123, Email: support@company.com, Live Chat: 24/7\n\nWhen customers ask questions, use the knowledge base above to provide helpful, natural responses.\n"
+          },
+          {
+            "createdAt": "2025-10-22T21:09:05Z",
+            "role": "user",
+            "content": [
+              {
+                "type": "text",
+                "text": "How can I apply a discount code?"
+              }
+            ]
+          },
+          {
+            "createdAt": "2025-10-22T21:09:06Z",
+            "run_id": "run_o80dki1dvAUEVL1jj0fnFSQR",
+            "role": "assistant",
+            "content": [
+              {
+                "type": "text",
+                "text": "You can apply a discount code right at checkout! Here\u2019s how:  \n\n1. Add your items to the cart.  \n2. Go to the checkout page.  \n3. Look for the **\u201cPromo Code\u201d** or **\u201cDiscount Code\u201d** field\u2014it's usually under your order summary.  \n4. Enter your code exactly as it appears (no spaces or extra characters).  \n5. Click **\u201cApply\u201d** before completing your payment.  \n\nThe discount should update your total right away.  \n\nWould you like me to confirm whether your code is currently valid or has any restrictions?"
+              }
+            ]
+          }
+        ]
+      },
+      "inputs.metrics": {
+        "server-run-duration-in-seconds": 2.0,
+        "client-run-duration-in-seconds": 2.9456923007965092,
+        "completion-tokens": 121,
+        "prompt-tokens": 1061,
+        "ground-truth": ""
+      },
+      "inputs.ground_truth": "",
+      "outputs.operational_metrics.server-run-duration-in-seconds": 2.0,
+      "outputs.operational_metrics.client-run-duration-in-seconds": 2.9456923007965092,
+      "outputs.operational_metrics.completion-tokens": 121,
+      "outputs.operational_metrics.prompt-tokens": 1061,
+      "outputs.operational_metrics.ground-truth": "",
+      "outputs.tool_call_accuracy.tool_call_accuracy": "not applicable",
+      "outputs.tool_call_accuracy.tool_call_accuracy_result": "pass",
+      "outputs.tool_call_accuracy.tool_call_accuracy_threshold": 3,
+      "outputs.tool_call_accuracy.tool_call_accuracy_reason": "No tool calls found in response or provided tool_calls.",
+      "outputs.tool_call_accuracy.details": {},
+      "outputs.intent_resolution.intent_resolution": 5.0,
+      "outputs.intent_resolution.intent_resolution_result": "pass",
+      "outputs.intent_resolution.intent_resolution_threshold": 3,
+      "outputs.intent_resolution.intent_resolution_reason": "The user asked how to apply a discount code. The agent provided clear, step-by-step instructions for entering a code at checkout and offered further help regarding code validity, fully resolving the user's intent with thoroughness and relevance.",
+      "outputs.task_adherence.task_adherence": 5.0,
+      "outputs.task_adherence.task_adherence_result": "pass",
+      "outputs.task_adherence.task_adherence_threshold": 3,
+      "outputs.task_adherence.task_adherence_reason": "The assistant clearly explained how to apply a discount code at checkout, providing step-by-step instructions and offering further help. There were no system constraints or tool requirements, and the user's request was fully satisfied.",
+      "outputs.groundedness.groundedness": 1.0,
+      "outputs.groundedness.gpt_groundedness": 1.0,
+      "outputs.groundedness.groundedness_reason": "The response is not based on any provided context, as the context is empty.",
+      "outputs.groundedness.groundedness_result": "fail",
+      "outputs.groundedness.groundedness_threshold": 3,
+      "outputs.relevance.relevance": 5.0,
+      "outputs.relevance.gpt_relevance": 5.0,
+      "outputs.relevance.relevance_reason": "The response provides clear, step-by-step instructions on how to apply a discount code and adds helpful tips about code entry and validation. It also offers to check code validity or restrictions, enhancing the user's understanding and experience.",
+      "outputs.relevance.relevance_result": "pass",
+      "outputs.relevance.relevance_threshold": 3,
+      "outputs.coherence.coherence": 4.0,
+      "outputs.coherence.gpt_coherence": 4.0,
+      "outputs.coherence.coherence_reason": "The response is coherent, well-organized, and easy to follow, with clear connections between ideas and appropriate transitions.",
+      "outputs.coherence.coherence_result": "pass",
+      "outputs.coherence.coherence_threshold": 3,
+      "outputs.fluency.fluency": 4.0,
+      "outputs.fluency.gpt_fluency": 4.0,
+      "outputs.fluency.fluency_reason": "The response is well-articulated, coherent, and flows smoothly, with good grammar and varied vocabulary. It fits the definition of Proficient Fluency.",
+      "outputs.fluency.fluency_result": "pass",
+      "outputs.fluency.fluency_threshold": 3,
+      "outputs.similarity.similarity": 3.0,
+      "outputs.similarity.gpt_similarity": 3.0,
+      "outputs.similarity.similarity_result": "pass",
+      "outputs.similarity.similarity_threshold": 3,
+      "line_number": 9
+    }
+  ],
+  "metrics": {
+    "operational_metrics.server-run-duration-in-seconds": 1.3,
+    "operational_metrics.client-run-duration-in-seconds": 2.369572520256042,
+    "operational_metrics.completion-tokens": 98.7,
+    "operational_metrics.prompt-tokens": 1060.1,
+    "tool_call_accuracy.tool_call_accuracy_threshold": 3.0,
+    "intent_resolution.intent_resolution": 5.0,
+    "intent_resolution.intent_resolution_threshold": 3.0,
+    "task_adherence.task_adherence": 5.0,
+    "task_adherence.task_adherence_threshold": 3.0,
+    "groundedness.groundedness": 1.0,
+    "groundedness.gpt_groundedness": 1.0,
+    "groundedness.groundedness_threshold": 3.0,
+    "relevance.relevance": 4.7,
+    "relevance.gpt_relevance": 4.7,
+    "relevance.relevance_threshold": 3.0,
+    "coherence.coherence": 4.0,
+    "coherence.gpt_coherence": 4.0,
+    "coherence.coherence_threshold": 3.0,
+    "fluency.fluency": 4.0,
+    "fluency.gpt_fluency": 4.0,
+    "fluency.fluency_threshold": 3.0,
+    "similarity.similarity": 2.8,
+    "similarity.gpt_similarity": 2.8,
+    "similarity.similarity_threshold": 3.0,
+    "tool_call_accuracy.binary_aggregate": 1.0,
+    "intent_resolution.binary_aggregate": 1.0,
+    "task_adherence.binary_aggregate": 1.0,
+    "groundedness.binary_aggregate": 0.0,
+    "relevance.binary_aggregate": 1.0,
+    "coherence.binary_aggregate": 1.0,
+    "fluency.binary_aggregate": 1.0,
+    "similarity.binary_aggregate": 0.7
+  },
+  "studio_url": "https://ai.azure.com/resource/build/evaluation/44041156-80f6-49cd-acff-8642c68f6683?wsid=/subscriptions/0debeb64-562c-44d8-9966-110450d5f9ed/resourceGroups/rg-admin-4636/providers/Microsoft.CognitiveServices/accounts/nielsen-agent-demo-resource/projects/nielsen-agent-demo&tid=ed276d0c-896f-484d-881f-a630008998e0"
+}
