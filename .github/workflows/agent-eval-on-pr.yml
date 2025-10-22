@@ -119,25 +119,26 @@ jobs:
           import json
           import os
           
-          # Read current evaluation results
+          # Read current evaluation results (Azure AI format)
           with open('evaluation_results/agent_eval_output/eval-output.json', 'r') as f:
               results = json.load(f)
           
           metrics = results.get('metrics', {})
           
-          # Extract key metrics
+          # Azure AI evaluation nests metrics like relevance.relevance, coherence.coherence, etc.
+          # Extract key metrics from nested structure
           current_metrics = {
-              'relevance': metrics.get('relevance', 0),
-              'coherence': metrics.get('coherence', 0),
-              'fluency': metrics.get('fluency', 0),
-              'groundedness': metrics.get('groundedness', 0),
-              'tool_call_accuracy': metrics.get('tool_call_accuracy', 0),
-              'intent_resolution': metrics.get('intent_resolution', 0),
-              'task_adherence': metrics.get('task_adherence', 0),
-              'similarity': metrics.get('similarity', 0),
-              'client_run_duration': metrics.get('client-run-duration-in-seconds', 0),
-              'completion_tokens': metrics.get('completion-tokens', 0),
-              'prompt_tokens': metrics.get('prompt-tokens', 0)
+              'relevance': metrics.get('relevance.relevance', metrics.get('relevance.gpt_relevance', 0)),
+              'coherence': metrics.get('coherence.coherence', metrics.get('coherence.gpt_coherence', 0)),
+              'fluency': metrics.get('fluency.fluency', metrics.get('fluency.gpt_fluency', 0)),
+              'groundedness': metrics.get('groundedness.groundedness', metrics.get('groundedness.gpt_groundedness', 0)),
+              'tool_call_accuracy': metrics.get('tool_call_accuracy.tool_call_accuracy', 0),
+              'intent_resolution': metrics.get('intent_resolution.intent_resolution', 0),
+              'task_adherence': metrics.get('task_adherence.task_adherence', 0),
+              'similarity': metrics.get('similarity.similarity', metrics.get('similarity.gpt_similarity', 0)),
+              'client_run_duration': metrics.get('operational_metrics.client-run-duration-in-seconds', 0),
+              'completion_tokens': metrics.get('operational_metrics.completion-tokens', 0),
+              'prompt_tokens': metrics.get('operational_metrics.prompt-tokens', 0)
           }
           
           # Save metrics for comparison
