@@ -90,6 +90,9 @@ jobs:
           data-path: ${{ github.workspace }}/data/agent-eval-data.json
           evaluation-result-view: 'all-scores'
           api-version: ${{ vars.API_VERSION }}
+        env:
+          AZURE_OPENAI_ENDPOINT: https://nielsen-agent-demo-resource.openai.azure.com/
+          AZURE_OPENAI_API_VERSION: ${{ vars.API_VERSION }}
       
       - name: Extract and Display All Metrics
         id: parse-results
