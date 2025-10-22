@@ -1,13 +1,7 @@
 {
   "name": "CustomerServiceAgentTests",
   "evaluators": [
-    "IntentResolutionEvaluator",
-    "TaskAdherenceEvaluator",
     "ToolCallAccuracyEvaluator",
-    "RelevanceEvaluator",
-    "CoherenceEvaluator",
-    "FluencyEvaluator",
-    "GroundednessEvaluator",
     "ViolenceEvaluator",
     "HateUnfairnessEvaluator",
     "SelfHarmEvaluator",

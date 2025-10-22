@@ -62,8 +62,8 @@ jobs:
           if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ github.event.inputs.agent_ids }}" ]; then
             echo "agent_ids=${{ github.event.inputs.agent_ids }}" >> $GITHUB_OUTPUT
           else
-            # Use baseline agent ID from variables
-            echo "agent_ids=${{ vars.AGENT_ID_BASELINE }}" >> $GITHUB_OUTPUT
+            # Use both agents for comparison (baseline and v2)
+            echo "agent_ids=${{ vars.AGENT_ID_BASELINE }},${{ vars.AGENT_ID_V2 }}" >> $GITHUB_OUTPUT
           fi
           
           echo "🤖 Agent IDs to evaluate: $(cat $GITHUB_OUTPUT | grep agent_ids | cut -d'=' -f2)"
