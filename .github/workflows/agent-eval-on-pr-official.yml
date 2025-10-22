@@ -1,13 +1,14 @@
-name: "Agent Evaluation on Pull Request (Official Action)"
+name: "Agent Evaluation on Pull Request (Official Action) - DISABLED"
 
 on:
-  pull_request:
-    branches:
-      - main
-    paths:
-      - 'agent-setup/**'
-      - 'data/agent-eval-data.json'
-      - '.github/workflows/agent-eval-on-pr-official.yml'
+  # Disabled - using custom workflow instead
+  # pull_request:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - 'agent-setup/**'
+  #     - 'data/agent-eval-data.json'
+  #     - '.github/workflows/agent-eval-on-pr-official.yml'
   
   workflow_dispatch:
     inputs:
