@@ -89,28 +89,120 @@ jobs:
           evaluation-result-view: 'all-scores'
           api-version: ${{ vars.API_VERSION }}
       
-      - name: Parse Evaluation Results
+      - name: Extract and Display All Metrics
         id: parse-results
+        if: success()
         run: |
-          # The microsoft/ai-agent-evals action outputs results to GitHub Actions summary
-          # We'll capture key metrics for our comparison logic
+          python3 << 'EOF'
+          import json
+          import os
+          import glob
           
-          # Create placeholder for parsed results
-          # Note: The official action outputs to summary, so we'll need to adapt
-          # our comparison logic or use the action's built-in comparison when using multiple agents
+          # Find the evaluation output file created by the official action
+          eval_files = glob.glob('data/eval-output_*.json')
           
-          echo "✅ Evaluation completed using official Azure AI action"
-          echo "📊 Results available in Actions summary above"
+          if not eval_files:
+              print("⚠️ No evaluation output file found")
+              exit(0)
           
-          # For baseline comparison, we'll need to either:
-          # 1. Use the action's built-in multi-agent comparison feature
-          # 2. Extract results from the action's output for custom comparison
+          eval_file = eval_files[0]
+          print(f"📄 Reading evaluation results from: {eval_file}")
           
-          if [ "${{ steps.check-baseline.outputs.baseline_exists }}" == "true" ]; then
-            echo "📊 Baseline exists for comparison"
-            echo "ℹ️ For detailed comparison, consider using multiple agent IDs"
-            echo "   with baseline agent as first ID (baseline-agent-id parameter)"
-          fi
+          # Read evaluation results
+          with open(eval_file, 'r') as f:
+              results = json.load(f)
+          
+          metrics = results.get('metrics', {})
+          
+          # Extract comprehensive metrics
+          extracted = {
+              # AI Quality Scores
+              'relevance': metrics.get('relevance.relevance', metrics.get('relevance.gpt_relevance', 0)),
+              'relevance_passing_rate': metrics.get('relevance.binary_aggregate', 0) * 100,
+              
+              'coherence': metrics.get('coherence.coherence', metrics.get('coherence.gpt_coherence', 0)),
+              'coherence_passing_rate': metrics.get('coherence.binary_aggregate', 0) * 100,
+              
+              'fluency': metrics.get('fluency.fluency', metrics.get('fluency.gpt_fluency', 0)),
+              'fluency_passing_rate': metrics.get('fluency.binary_aggregate', 0) * 100,
+              
+              'groundedness': metrics.get('groundedness.groundedness', metrics.get('groundedness.gpt_groundedness', 0)),
+              'groundedness_passing_rate': metrics.get('groundedness.binary_aggregate', 0) * 100,
+              
+              'intent_resolution': metrics.get('intent_resolution.intent_resolution', 0),
+              'intent_resolution_passing_rate': metrics.get('intent_resolution.binary_aggregate', 0) * 100,
+              
+              'task_adherence': metrics.get('task_adherence.task_adherence', 0),
+              'task_adherence_passing_rate': metrics.get('task_adherence.binary_aggregate', 0) * 100,
+              
+              'tool_call_accuracy': metrics.get('tool_call_accuracy.tool_call_accuracy', 0),
+              'tool_call_accuracy_passing_rate': metrics.get('tool_call_accuracy.binary_aggregate', 0) * 100,
+              
+              'similarity': metrics.get('similarity.similarity', metrics.get('similarity.gpt_similarity', 0)),
+              'similarity_passing_rate': metrics.get('similarity.binary_aggregate', 0) * 100,
+              
+              # Operational Metrics
+              'client_run_duration': metrics.get('operational_metrics.client-run-duration-in-seconds', 0),
+              'server_run_duration': metrics.get('operational_metrics.server-run-duration-in-seconds', 0),
+              'completion_tokens': metrics.get('operational_metrics.completion-tokens', 0),
+              'prompt_tokens': metrics.get('operational_metrics.prompt-tokens', 0),
+          }
+          
+          # Build enhanced summary for GitHub Actions
+          summary = "# 📊 Enhanced AI Quality Metrics\n\n"
+          summary += "*Detailed breakdown from official Microsoft evaluation*\n\n"
+          
+          summary += "## 🎯 AI Quality (AI-assisted)\n\n"
+          summary += "| Evaluation Score | Value | Passing Rate | Status |\n"
+          summary += "|------------------|-------|--------------|--------|\n"
+          
+          quality_metrics = [
+              ('intent_resolution', 'Intent Resolution'),
+              ('task_adherence', 'Task Adherence'),
+              ('relevance', 'Relevance'),
+              ('coherence', 'Coherence'),
+              ('fluency', 'Fluency'),
+              ('groundedness', 'Groundedness'),
+              ('similarity', 'Similarity'),
+              ('tool_call_accuracy', 'Tool Call Accuracy')
+          ]
+          
+          for key, label in quality_metrics:
+              value = extracted.get(key, 0)
+              pass_rate = extracted.get(f'{key}_passing_rate', 0)
+              
+              # Status badge
+              if pass_rate >= 100:
+                  badge = "🟢 Excellent"
+              elif pass_rate >= 80:
+                  badge = "🟡 Good"
+              elif pass_rate >= 60:
+                  badge = "🟠 Fair"
+              else:
+                  badge = "🔴 Needs Improvement"
+              
+              summary += f"| {label} | {value:.2f} | {pass_rate:.1f}% | {badge} |\n"
+          
+          summary += "\n## ⚡ Performance Metrics\n\n"
+          summary += "| Metric | Value |\n"
+          summary += "|--------|-------|\n"
+          summary += f"| Client Run Duration | {extracted['client_run_duration']:.2f}s |\n"
+          summary += f"| Server Run Duration | {extracted['server_run_duration']:.2f}s |\n"
+          summary += f"| Completion Tokens | {extracted['completion_tokens']:.0f} |\n"
+          summary += f"| Prompt Tokens | {extracted['prompt_tokens']:.0f} |\n"
+          
+          summary += "\n---\n"
+          summary += f"**Agent ID:** `${{ steps.set-agents.outputs.agent_ids }}`\n"
+          summary += f"**Evaluation File:** `{eval_file}`\n"
+          
+          # Write to GitHub Actions Summary
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
+              f.write("\n\n" + summary)
+          
+          print("✅ Enhanced metrics summary added to Actions tab")
+          print("\nExtracted Metrics:")
+          print(json.dumps(extracted, indent=2))
+          EOF
       
       - name: Generate PR Comment (Basic)
         if: always()
