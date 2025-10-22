@@ -126,19 +126,45 @@ jobs:
           metrics = results.get('metrics', {})
           
           # Azure AI evaluation nests metrics like relevance.relevance, coherence.coherence, etc.
-          # Extract key metrics from nested structure
+          # Extract ALL available metrics including passing rates and thresholds
           current_metrics = {
+              # AI Quality Scores (1-5 scale)
               'relevance': metrics.get('relevance.relevance', metrics.get('relevance.gpt_relevance', 0)),
+              'relevance_passing_rate': metrics.get('relevance.binary_aggregate', 0) * 100,
+              
               'coherence': metrics.get('coherence.coherence', metrics.get('coherence.gpt_coherence', 0)),
+              'coherence_passing_rate': metrics.get('coherence.binary_aggregate', 0) * 100,
+              
               'fluency': metrics.get('fluency.fluency', metrics.get('fluency.gpt_fluency', 0)),
+              'fluency_passing_rate': metrics.get('fluency.binary_aggregate', 0) * 100,
+              
               'groundedness': metrics.get('groundedness.groundedness', metrics.get('groundedness.gpt_groundedness', 0)),
-              'tool_call_accuracy': metrics.get('tool_call_accuracy.tool_call_accuracy', 0),
+              'groundedness_passing_rate': metrics.get('groundedness.binary_aggregate', 0) * 100,
+              
+              # Agent-specific metrics
               'intent_resolution': metrics.get('intent_resolution.intent_resolution', 0),
+              'intent_resolution_passing_rate': metrics.get('intent_resolution.binary_aggregate', 0) * 100,
+              
               'task_adherence': metrics.get('task_adherence.task_adherence', 0),
+              'task_adherence_passing_rate': metrics.get('task_adherence.binary_aggregate', 0) * 100,
+              
+              'tool_call_accuracy': metrics.get('tool_call_accuracy.tool_call_accuracy', 0),
+              'tool_call_accuracy_passing_rate': metrics.get('tool_call_accuracy.binary_aggregate', 0) * 100,
+              
               'similarity': metrics.get('similarity.similarity', metrics.get('similarity.gpt_similarity', 0)),
+              'similarity_passing_rate': metrics.get('similarity.binary_aggregate', 0) * 100,
+              
+              # Operational Metrics
               'client_run_duration': metrics.get('operational_metrics.client-run-duration-in-seconds', 0),
+              'server_run_duration': metrics.get('operational_metrics.server-run-duration-in-seconds', 0),
               'completion_tokens': metrics.get('operational_metrics.completion-tokens', 0),
-              'prompt_tokens': metrics.get('operational_metrics.prompt-tokens', 0)
+              'prompt_tokens': metrics.get('operational_metrics.prompt-tokens', 0),
+              
+              # Risk & Safety Metrics (if available)
+              'violent_content_defect_rate': metrics.get('violent_content.defect_rate', 0) * 100,
+              'sexual_content_defect_rate': metrics.get('sexual_content.defect_rate', 0) * 100,
+              'self_harm_defect_rate': metrics.get('self_harm.defect_rate', 0) * 100,
+              'hate_unfair_defect_rate': metrics.get('hate_unfair.defect_rate', 0) * 100,
           }
           
           # Save metrics for comparison
@@ -225,7 +251,7 @@ jobs:
           baseline_exists = "${{ steps.check-baseline.outputs.baseline_exists }}" == "true"
           
           # Start building comment
-          comment = "## 🤖 Agent Evaluation Results\n\n"
+          comment = "## 🤖 Azure AI Agent Evaluation\n\n"
           
           if baseline_exists:
               # Read comparison
@@ -241,91 +267,137 @@ jobs:
                   failed = "${{ steps.compare.outputs.failed_metrics }}"
                   comment += "### ⚠️ Quality Degradation Detected\n\n"
                   comment += f"The following metrics degraded by more than 5%: **{failed}**\n\n"
+          else:
+              comment += "### � First Evaluation Run\n\n"
+              comment += "This is the first evaluation. Results will be saved as baseline when merged to main.\n\n"
+          
+          # Section 1: Operational Metrics
+          comment += "## Operational Metrics\n\n"
+          comment += "| Evaluation Score | "
+          if baseline_exists:
+              comment += "Current | Baseline | Change |\n"
+              comment += "|------------------|---------|----------|--------|\n"
               
-              comment += "### 📊 Metrics Comparison\n\n"
-              comment += "| Metric | Current | Baseline | Change | % Change |\n"
-              comment += "|--------|---------|----------|---------|----------|\n"
+              ops_metrics = [
+                  ('client_run_duration', 'Client run duration [s]'),
+                  ('server_run_duration', 'Server run duration [s]'),
+                  ('completion_tokens', 'Completion tokens'),
+                  ('prompt_tokens', 'Prompt tokens')
+              ]
               
-              # Quality metrics
+              for key, label in ops_metrics:
+                  if key in comparison:
+                      c = comparison[key]
+                      curr = f"{c['current']:.2f}" if 'duration' in key else f"{c['current']:.0f}"
+                      base = f"{c['baseline']:.2f}" if 'duration' in key else f"{c['baseline']:.0f}"
+                      diff = f"{c['diff']:+.2f}" if 'duration' in key else f"{c['diff']:+.0f}"
+                      
+                      # Color code based on change (lower is better for duration, tokens)
+                      if 'duration' in key or 'tokens' in key:
+                          badge = "🟢" if c['diff'] < 0 else ("🔴" if c['diff'] > c['baseline'] * 0.1 else "🟡")
+                      else:
+                          badge = ""
+                      
+                      comment += f"| {badge} {label} | {curr} | {base} | {diff} |\n"
+          else:
+              comment += "Value |\n"
+              comment += "|------------------|-------|\n"
+              comment += f"| Client run duration [s] | {current.get('client_run_duration', 0):.2f} |\n"
+              comment += f"| Server run duration [s] | {current.get('server_run_duration', 0):.2f} |\n"
+              comment += f"| Completion tokens | {current.get('completion_tokens', 0):.0f} |\n"
+              comment += f"| Prompt tokens | {current.get('prompt_tokens', 0):.0f} |\n"
+          
+          # Section 2: AI Quality (AI-assisted)
+          comment += "\n## AI Quality (AI-assisted)\n\n"
+          comment += "| Evaluation Score | "
+          if baseline_exists:
+              comment += "Current | Baseline | Change | Passing Rate |\n"
+              comment += "|------------------|---------|----------|--------|-------------|\n"
+              
               quality_metrics = [
+                  ('intent_resolution', 'Intent Resolution'),
+                  ('task_adherence', 'Task Adherence'),
                   ('relevance', 'Relevance'),
                   ('coherence', 'Coherence'),
                   ('fluency', 'Fluency'),
                   ('groundedness', 'Groundedness'),
-                  ('tool_call_accuracy', 'Tool Call Accuracy'),
-                  ('intent_resolution', 'Intent Resolution'),
-                  ('task_adherence', 'Task Adherence'),
                   ('similarity', 'Similarity')
               ]
               
               for key, label in quality_metrics:
                   if key in comparison:
                       c = comparison[key]
-                      current_val = f"{c['current']:.3f}"
-                      baseline_val = f"{c['baseline']:.3f}"
-                      diff = f"{c['diff']:+.3f}"
-                      diff_pct = f"{c['diff_pct']:+.1f}%"
-                      
-                      # Add emoji indicator
-                      if c['diff_pct'] > 5:
-                          emoji = "🟢"
-                      elif c['diff_pct'] < -5:
-                          emoji = "🔴"
-                      else:
-                          emoji = "🟡"
-                      
-                      comment += f"| {emoji} {label} | {current_val} | {baseline_val} | {diff} | {diff_pct} |\n"
-              
-              # Performance metrics
-              comment += "\n### ⚡ Performance Metrics\n\n"
-              comment += "| Metric | Current | Baseline | Change |\n"
-              comment += "|--------|---------|----------|--------|\n"
-              
-              perf_metrics = [
-                  ('client_run_duration', 'Avg Response Time (s)'),
-                  ('completion_tokens', 'Completion Tokens'),
-                  ('prompt_tokens', 'Prompt Tokens')
-              ]
-              
-              for key, label in perf_metrics:
-                  if key in comparison:
-                      c = comparison[key]
-                      current_val = f"{c['current']:.2f}"
-                      baseline_val = f"{c['baseline']:.2f}"
+                      curr = f"{c['current']:.2f}"
+                      base = f"{c['baseline']:.2f}"
                       diff = f"{c['diff']:+.2f}"
-                      comment += f"| {label} | {current_val} | {baseline_val} | {diff} |\n"
-          
+                      pass_rate = f"{current.get(f'{key}_passing_rate', 0):.1f}%"
+                      
+                      # Add status badge
+                      if c['diff_pct'] > 5:
+                          badge = "🟢"
+                      elif c['diff_pct'] < -5:
+                          badge = "🔴"
+                      else:
+                          badge = "🟡"
+                      
+                      comment += f"| {badge} {label} | {curr} | {base} | {diff} | {pass_rate} |\n"
           else:
-              # First run - no baseline
-              comment += "### 📝 First Evaluation Run\n\n"
-              comment += "This is the first evaluation run. Results will be saved as baseline when merged to main.\n\n"
-              comment += "### 📊 Current Metrics\n\n"
-              comment += "| Metric | Score |\n"
-              comment += "|--------|-------|\n"
+              comment += "Value | Passing Rate |\n"
+              comment += "|------------------|-------|-------------|\n"
               
-              metrics_display = [
+              quality_metrics = [
+                  ('intent_resolution', 'Intent Resolution'),
+                  ('task_adherence', 'Task Adherence'),
                   ('relevance', 'Relevance'),
                   ('coherence', 'Coherence'),
                   ('fluency', 'Fluency'),
                   ('groundedness', 'Groundedness'),
-                  ('tool_call_accuracy', 'Tool Call Accuracy'),
-                  ('intent_resolution', 'Intent Resolution'),
-                  ('task_adherence', 'Task Adherence'),
-                  ('similarity', 'Similarity'),
-                  ('client_run_duration', 'Avg Response Time (s)'),
-                  ('completion_tokens', 'Completion Tokens'),
-                  ('prompt_tokens', 'Prompt Tokens')
+                  ('similarity', 'Similarity')
               ]
               
-              for key, label in metrics_display:
-                  if key in current:
-                      value = f"{current[key]:.3f}" if current[key] < 100 else f"{current[key]:.0f}"
-                      comment += f"| {label} | {value} |\n"
+              for key, label in quality_metrics:
+                  value = f"{current.get(key, 0):.2f}"
+                  pass_rate = f"{current.get(f'{key}_passing_rate', 0):.1f}%"
+                  
+                  # Add badge based on passing rate
+                  if current.get(f'{key}_passing_rate', 0) >= 100:
+                      badge = "🟢"
+                  elif current.get(f'{key}_passing_rate', 0) >= 80:
+                      badge = "🟡"
+                  else:
+                      badge = "🔴"
+                  
+                  comment += f"| {badge} {label} | {value} | {pass_rate} |\n"
           
+          # Section 3: Risk and Safety
+          has_safety_metrics = any(current.get(key, 0) > 0 for key in [
+              'violent_content_defect_rate', 'sexual_content_defect_rate', 
+              'self_harm_defect_rate', 'hate_unfair_defect_rate'
+          ])
+          
+          if has_safety_metrics:
+              comment += "\n## Risk and Safety\n\n"
+              comment += "| Evaluation Score | Defect Rate |\n"
+              comment += "|------------------|-------------|\n"
+              
+              safety_metrics = [
+                  ('violent_content_defect_rate', 'Violent content defect rate'),
+                  ('sexual_content_defect_rate', 'Sexual content defect rate'),
+                  ('self_harm_defect_rate', 'Self-harm-related content defect rate'),
+                  ('hate_unfair_defect_rate', 'Hateful and unfair content defect rate')
+              ]
+              
+              for key, label in safety_metrics:
+                  rate = current.get(key, 0)
+                  badge = "🟢" if rate == 0 else ("🔴" if rate > 5 else "🟡")
+                  comment += f"| {badge} {label} | {rate:.1f}% |\n"
+          
+          # Footer
           comment += "\n---\n"
           comment += f"**Run ID:** `${{ steps.config.outputs.run_id }}`\n"
           comment += f"**Agent ID:** `${{ vars.AGENT_ID_BASELINE }}`\n"
           comment += f"**Test Queries:** 10\n"
+          comment += f"**Workflow:** [View Logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})\n"
           
           # Save comment to file
           with open('pr_comment.md', 'w') as f:
