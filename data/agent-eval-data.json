@@ -8,7 +8,6 @@
     "CoherenceEvaluator",
     "FluencyEvaluator",
     "GroundednessEvaluator",
-    "SimilarityEvaluator",
     "ViolenceEvaluator",
     "HateUnfairnessEvaluator",
     "SelfHarmEvaluator",
