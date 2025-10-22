@@ -27,9 +27,13 @@ venv/
 env/
 ENV/
 
-# Evaluation outputs
-evaluation_results/
+# Evaluation outputs (but keep baseline)
+evaluation_results/agent_eval_output/
+evaluation_results/pr_runs/
 *.jsonl.output/
+
+# Keep baseline committed for CI/CD
+!evaluation_results/baseline/
 
 # IDE
 .vscode/

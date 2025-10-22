@@ -5,10 +5,7 @@
     "CoherenceEvaluator",
     "FluencyEvaluator",
     "GroundednessEvaluator",
-    "ViolenceEvaluator",
-    "HateUnfairnessEvaluator",
-    "SelfHarmEvaluator",
-    "SexualEvaluator"
+    "ToolCallAccuracyEvaluator"
   ],
   "data": [
     {

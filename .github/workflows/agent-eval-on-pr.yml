@@ -1,0 +1,346 @@
+name: "🤖 Agent Evaluation with Comparison"
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'agent-setup/**'
+      - 'data/agent-eval-data.json'
+      - 'scripts/**'
+      - '.github/workflows/agent-eval-on-pr.yml'
+  
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to evaluate (optional)'
+        required: false
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  evaluate-agents:
+    runs-on: ubuntu-latest
+    name: 📊 Evaluate & Compare Agents
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history to access main branch
+      
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: 📦 Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install --upgrade setuptools wheel
+          pip install packaging
+          pip install -r requirements.txt
+          pip install azure-ai-projects azure-ai-evaluation azure-identity
+      
+      - name: 🔐 Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      
+      - name: 📋 Set Evaluation Configuration
+        id: config
+        run: |
+          echo "� Evaluation Configuration:"
+          echo "   Baseline Agent: ${{ vars.AGENT_ID_BASELINE }}"
+          echo "   V2 Agent: ${{ vars.AGENT_ID_V2 }}"
+          echo "   Project Endpoint: ${{ vars.AZURE_AI_PROJECT_ENDPOINT }}"
+          echo "   Deployment: ${{ vars.AZURE_DEPLOYMENT_NAME }}"
+          
+          # Generate unique run ID
+          RUN_ID="pr-${{ github.event.pull_request.number }}-$(date +%Y%m%d-%H%M%S)"
+          echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
+          echo "   Run ID: $RUN_ID"
+      
+      - name: 📁 Create Output Directories
+        run: |
+          mkdir -p evaluation_results/baseline
+          mkdir -p evaluation_results/v2
+      
+      - name: 🎯 Evaluate Baseline Agent
+        env:
+          AZURE_AI_PROJECT_ENDPOINT: ${{ vars.AZURE_AI_PROJECT_ENDPOINT }}
+          AZURE_DEPLOYMENT_NAME: ${{ vars.AZURE_DEPLOYMENT_NAME }}
+          AGENT_ID_BASELINE: ${{ vars.AGENT_ID_BASELINE }}
+        run: |
+          echo "🎯 Evaluating Baseline Agent (${{ vars.AGENT_ID_BASELINE }})..."
+          python scripts/local_agent_eval.py
+          
+          # Save baseline results
+          cp evaluation_results/agent_eval_output/eval-output.json \
+             evaluation_results/baseline/baseline_results.json
+          
+          echo "✅ Baseline evaluation completed"
+      
+      - name: 🚀 Evaluate V2 Agent
+        env:
+          AZURE_AI_PROJECT_ENDPOINT: ${{ vars.AZURE_AI_PROJECT_ENDPOINT }}
+          AZURE_DEPLOYMENT_NAME: ${{ vars.AZURE_DEPLOYMENT_NAME }}
+          AGENT_ID_BASELINE: ${{ vars.AGENT_ID_V2 }}
+        run: |
+          echo "🚀 Evaluating V2 Agent (${{ vars.AGENT_ID_V2 }})..."
+          python scripts/local_agent_eval.py
+          
+          # Save V2 results
+          cp evaluation_results/agent_eval_output/eval-output.json \
+             evaluation_results/v2/v2_results.json
+          
+          echo "✅ V2 evaluation completed"
+      
+      - name: 📊 Compare Agent Results
+        id: compare
+        run: |
+          python3 << 'EOF'
+          import json
+          import os
+          
+          # Read baseline results
+          with open('evaluation_results/baseline/baseline_results.json', 'r') as f:
+              baseline_data = json.load(f)
+          
+          # Read V2 results
+          with open('evaluation_results/v2/v2_results.json', 'r') as f:
+              v2_data = json.load(f)
+          
+          baseline_metrics = baseline_data.get('metrics', {})
+          v2_metrics = v2_data.get('metrics', {})
+          
+          # Extract metrics for comparison (handling nested keys)
+          def get_metric(metrics_dict, key_patterns):
+              """Try multiple key patterns to get a metric value"""
+              for pattern in key_patterns:
+                  if pattern in metrics_dict:
+                      return metrics_dict[pattern]
+              return 0
+          
+          # Define metrics to compare
+          metric_definitions = {
+              'Relevance': ['relevance.relevance', 'relevance.gpt_relevance'],
+              'Coherence': ['coherence.coherence', 'coherence.gpt_coherence'],
+              'Fluency': ['fluency.fluency', 'fluency.gpt_fluency'],
+              'Groundedness': ['groundedness.groundedness', 'groundedness.gpt_groundedness'],
+              'Tool Call Accuracy': ['tool_call_accuracy.tool_call_accuracy']
+          }
+          
+          # Build comparison table
+          comparison_rows = []
+          
+          for metric_name, key_patterns in metric_definitions.items():
+              baseline_value = get_metric(baseline_metrics, key_patterns)
+              v2_value = get_metric(v2_metrics, key_patterns)
+              
+              # Calculate difference and percentage
+              diff = v2_value - baseline_value
+              if baseline_value > 0:
+                  pct_change = (diff / baseline_value) * 100
+              else:
+                  pct_change = 0
+              
+              # Determine status
+              if abs(diff) < 0.1:
+                  status = "🟡"  # Neutral
+                  change_text = "No change"
+              elif diff > 0:
+                  status = "🟢"  # Improvement
+                  change_text = f"+{diff:.2f} ({pct_change:+.1f}%)"
+              else:
+                  status = "🔴"  # Regression
+                  change_text = f"{diff:.2f} ({pct_change:+.1f}%)"
+              
+              comparison_rows.append({
+                  'metric': metric_name,
+                  'baseline': f"{baseline_value:.2f}",
+                  'v2': f"{v2_value:.2f}",
+                  'change': change_text,
+                  'status': status
+              })
+          
+          # Save comparison for later
+          with open('comparison.json', 'w') as f:
+              json.dump(comparison_rows, f, indent=2)
+          
+          # Print summary
+          print("=" * 60)
+          print("📊 AGENT COMPARISON SUMMARY")
+          print("=" * 60)
+          for row in comparison_rows:
+              print(f"{row['status']} {row['metric']:<20} Baseline: {row['baseline']:>6}  V2: {row['v2']:>6}  Change: {row['change']}")
+          print("=" * 60)
+          
+          # Count improvements/regressions
+          improvements = sum(1 for r in comparison_rows if r['status'] == '🟢')
+          regressions = sum(1 for r in comparison_rows if r['status'] == '🔴')
+          neutral = sum(1 for r in comparison_rows if r['status'] == '🟡')
+          
+          print(f"\n📈 Improvements: {improvements}")
+          print(f"📉 Regressions: {regressions}")
+          print(f"➖ Neutral: {neutral}")
+          
+          # Overall assessment
+          if regressions > 0:
+              print(f"\n❌ V2 Agent has {regressions} metric(s) worse than baseline")
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                  f.write("overall_status=regression\n")
+          elif improvements > 0:
+              print(f"\n✅ V2 Agent has {improvements} metric(s) better than baseline")
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                  f.write("overall_status=improvement\n")
+          else:
+              print("\n➖ V2 Agent performance is similar to baseline")
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                  f.write("overall_status=neutral\n")
+          EOF
+      
+      - name: 💬 Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const comparison = JSON.parse(fs.readFileSync('comparison.json', 'utf8'));
+            
+            // Build markdown table
+            let table = `## 🤖 Agent Evaluation Results\n\n`;
+            table += `### 📊 Baseline vs V2 Agent Comparison\n\n`;
+            table += `| Metric | Baseline | V2 | Change | Status |\n`;
+            table += `|--------|----------|-----|--------|--------|\n`;
+            
+            for (const row of comparison) {
+              table += `| ${row.metric} | ${row.baseline} | ${row.v2} | ${row.change} | ${row.status} |\n`;
+            }
+            
+            // Add summary
+            const improvements = comparison.filter(r => r.status === '🟢').length;
+            const regressions = comparison.filter(r => r.status === '🔴').length;
+            const neutral = comparison.filter(r => r.status === '🟡').length;
+            
+            table += `\n### Summary\n`;
+            table += `- 📈 Improvements: ${improvements}\n`;
+            table += `- 📉 Regressions: ${regressions}\n`;
+            table += `- ➖ Neutral: ${neutral}\n`;
+            
+            // Overall assessment
+            if (regressions > 0) {
+              table += `\n❌ **V2 Agent has ${regressions} metric(s) worse than baseline**\n`;
+            } else if (improvements > 0) {
+              table += `\n✅ **V2 Agent has ${improvements} metric(s) better than baseline**\n`;
+            } else {
+              table += `\n➖ **V2 Agent performance is similar to baseline**\n`;
+            }
+            
+            table += `\n---\n`;
+            table += `*Agent IDs:*\n`;
+            table += `- Baseline: \`${{ vars.AGENT_ID_BASELINE }}\`\n`;
+            table += `- V2: \`${{ vars.AGENT_ID_V2 }}\`\n`;
+            
+            // Post comment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: table
+            });
+      
+      - name: 📤 Upload Evaluation Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: evaluation-results-${{ steps.config.outputs.run_id }}
+          path: |
+            evaluation_results/baseline/
+            evaluation_results/v2/
+            comparison.json
+      
+      - name: 📋 Post to GitHub Actions Summary
+        if: always()
+        run: |
+          # Read comparison data and generate summary
+          python3 << 'EOF'
+          import json
+          import os
+          
+          # Read comparison results
+          with open('comparison.json', 'r') as f:
+              comparison = json.load(f)
+          
+          # Read full results for additional context
+          with open('evaluation_results/baseline/baseline_results.json', 'r') as f:
+              baseline_data = json.load(f)
+          with open('evaluation_results/v2/v2_results.json', 'r') as f:
+              v2_data = json.load(f)
+          
+          # Build GitHub Actions summary
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'w') as summary:
+              summary.write("## 🤖 Agent Evaluation Results\n\n")
+              summary.write("### 📊 Baseline vs V2 Agent Comparison\n\n")
+              summary.write("| Metric | Baseline | V2 | Change | Status |\n")
+              summary.write("|--------|----------|-----|--------|--------|\n")
+              
+              for row in comparison:
+                  summary.write(f"| {row['metric']} | {row['baseline']} | {row['v2']} | {row['change']} | {row['status']} |\n")
+              
+              # Summary counts
+              improvements = sum(1 for r in comparison if r['status'] == '🟢')
+              regressions = sum(1 for r in comparison if r['status'] == '🔴')
+              neutral = sum(1 for r in comparison if r['status'] == '🟡')
+              
+              summary.write(f"\n### Summary\n\n")
+              summary.write(f"- 📈 **Improvements:** {improvements}\n")
+              summary.write(f"- 📉 **Regressions:** {regressions}\n")
+              summary.write(f"- ➖ **Neutral:** {neutral}\n\n")
+              
+              # Overall assessment
+              if regressions > 0:
+                  summary.write(f"⚠️  **V2 Agent has {regressions} metric(s) worse than baseline**\n\n")
+                  summary.write("Review the metrics above to decide if the changes are acceptable.\n\n")
+              elif improvements > 0:
+                  summary.write(f"✅ **V2 Agent has {improvements} metric(s) better than baseline!**\n\n")
+              else:
+                  summary.write("➖ **V2 Agent performance is similar to baseline**\n\n")
+              
+              summary.write("---\n\n")
+              summary.write("### Agent Details\n\n")
+              summary.write(f"- **Baseline Agent ID:** `${{ vars.AGENT_ID_BASELINE }}`\n")
+              summary.write(f"- **V2 Agent ID:** `${{ vars.AGENT_ID_V2 }}`\n")
+              summary.write(f"- **Run ID:** `${{ steps.config.outputs.run_id }}`\n")
+              summary.write(f"- **Deployment:** `${{ vars.AZURE_DEPLOYMENT_NAME }}`\n\n")
+              
+              summary.write("### Resources\n\n")
+              summary.write(f"- [View PR](https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }})\n")
+              summary.write(f"- [Download Artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})\n")
+          
+          print("✅ GitHub Actions summary generated")
+          EOF
+      
+      - name: ✅ Evaluation Complete
+        if: always()
+        run: |
+          echo "✅ Agent evaluation completed successfully!"
+          echo ""
+          if [ "${{ steps.compare.outputs.overall_status }}" == "regression" ]; then
+            echo "⚠️  Note: V2 agent has some metrics worse than baseline"
+            echo "    Review the summary above to decide if changes are acceptable"
+          elif [ "${{ steps.compare.outputs.overall_status }}" == "improvement" ]; then
+            echo "🎉 V2 agent shows improvements over baseline!"
+          else
+            echo "➖ V2 agent performance is similar to baseline"
+          fi
+          echo ""
+          echo "📊 Check the summary above for detailed comparison"
+          echo "📁 Results saved as artifacts"
