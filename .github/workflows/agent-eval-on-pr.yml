@@ -106,7 +106,7 @@ jobs:
           python scripts/local_agent_eval.py
           
           # Copy results to PR-specific directory
-          cp evaluation_results/agent_eval_output/evaluation_results.json \
+          cp evaluation_results/agent_eval_output/eval-output.json \
              evaluation_results/pr_runs/${{ steps.config.outputs.run_id }}/evaluation_results.json
           
           echo "✅ Evaluation completed"
@@ -120,7 +120,7 @@ jobs:
           import os
           
           # Read current evaluation results
-          with open('evaluation_results/agent_eval_output/evaluation_results.json', 'r') as f:
+          with open('evaluation_results/agent_eval_output/eval-output.json', 'r') as f:
               results = json.load(f)
           
           metrics = results.get('metrics', {})

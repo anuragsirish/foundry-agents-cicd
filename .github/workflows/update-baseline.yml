@@ -65,7 +65,7 @@ jobs:
           from datetime import datetime
           
           # Read evaluation results
-          with open('evaluation_results/agent_eval_output/evaluation_results.json', 'r') as f:
+          with open('evaluation_results/agent_eval_output/eval-output.json', 'r') as f:
               results = json.load(f)
           
           metrics = results.get('metrics', {})
