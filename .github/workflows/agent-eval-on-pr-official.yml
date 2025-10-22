@@ -56,43 +56,36 @@ jobs:
             echo "📝 No baseline found - this will be the first run"
           fi
       
-      - name: Set Agent IDs
+      - name: Set Agent IDs for Comparison
         id: set-agents
         run: |
-          # TEMPORARY FIX: Evaluate only one agent at a time to avoid "not applicable" comparison errors
-          # The official action fails when comparing agents with non-numeric safety metric values
-          # See TROUBLESHOOTING.md for details
-          
           if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ github.event.inputs.agent_ids }}" ]; then
             echo "agent_ids=${{ github.event.inputs.agent_ids }}" >> $GITHUB_OUTPUT
           else
-            # Evaluate PR agent only (not both simultaneously)
-            # TODO: Uncomment below when Microsoft fixes the action to handle "not applicable" values
-            # echo "agent_ids=${{ vars.AGENT_ID_BASELINE }},${{ vars.AGENT_ID_V2 }}" >> $GITHUB_OUTPUT
-            echo "agent_ids=${{ vars.AGENT_ID_BASELINE }}" >> $GITHUB_OUTPUT
-            echo "⚠️ Note: Evaluating single agent due to known comparison issue with official action"
-            echo "⚠️ To evaluate both agents, use the custom workflow instead"
+            # Evaluate both agents - official action handles comparison automatically
+            echo "agent_ids=${{ vars.AGENT_ID_BASELINE }},${{ vars.AGENT_ID_V2 }}" >> $GITHUB_OUTPUT
           fi
           
-          echo "🤖 Agent IDs to evaluate: $(cat $GITHUB_OUTPUT | grep agent_ids | cut -d'=' -f2)"
+          echo "🤖 Agents to evaluate and compare: $(cat $GITHUB_OUTPUT | grep agent_ids | cut -d'=' -f2)"
       
       - name: Display Configuration
         run: |
           echo "🔍 Evaluation Configuration:"
           echo "   Agent IDs: ${{ steps.set-agents.outputs.agent_ids }}"
+          echo "   Baseline (first): ${{ vars.AGENT_ID_BASELINE }}"
+          echo "   Variant (second): ${{ vars.AGENT_ID_V2 }}"
           echo "   Project Endpoint: ${{ vars.AZURE_AI_PROJECT_ENDPOINT }}"
           echo "   Deployment: ${{ vars.AZURE_DEPLOYMENT_NAME }}"
           echo "   Data Path: ${{ github.workspace }}/data/agent-eval-data.json"
-          echo "   API Version: ${{ vars.API_VERSION }}"
-          echo "   Baseline exists: ${{ steps.check-baseline.outputs.baseline_exists }}"
       
-      - name: Run AI Agent Evaluation
+      - name: Run AI Agent Evaluation with Comparison
         id: run-evaluation
         uses: microsoft/ai-agent-evals@v2-beta
         with:
           azure-ai-project-endpoint: ${{ vars.AZURE_AI_PROJECT_ENDPOINT }}
           deployment-name: ${{ vars.AZURE_DEPLOYMENT_NAME }}
           agent-ids: ${{ steps.set-agents.outputs.agent_ids }}
+          baseline-agent-id: ${{ vars.AGENT_ID_BASELINE }}
           data-path: ${{ github.workspace }}/data/agent-eval-data.json
           evaluation-result-view: 'all-scores'
           api-version: ${{ vars.API_VERSION }}
@@ -212,46 +205,35 @@ jobs:
           print(json.dumps(extracted, indent=2))
           EOF
       
-      - name: Generate PR Comment (Basic)
+      - name: Generate PR Comment
         if: always()
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const fs = require('fs');
-            
-            // Build basic comment
             let comment = "## 🤖 Agent Evaluation Results\n\n";
             
             if ("${{ steps.run-evaluation.outcome }}" === "success") {
-              comment += "### ✅ Evaluation Completed\n\n";
-              comment += "The evaluation has completed successfully using the official Azure AI action.\n\n";
+              comment += "### ✅ Evaluation Completed with Statistical Comparison\n\n";
+              comment += "Both agents have been evaluated and statistically compared.\n\n";
               comment += "**View detailed results:**\n";
               comment += `- [GitHub Actions Summary](${context.payload.pull_request.html_url}/checks)\n`;
               comment += `- [Azure AI Foundry Portal](${process.env.AZURE_AI_PROJECT_ENDPOINT?.replace('/api/projects/', '/projects/')})\n\n`;
+              comment += "### 📊 Agents Compared\n\n";
+              comment += `- **Baseline:** \`${{ vars.AGENT_ID_BASELINE }}\`\n`;
+              comment += `- **Variant:** \`${{ vars.AGENT_ID_V2 }}\`\n\n`;
+              comment += "The official action automatically calculates:\n";
+              comment += "- Absolute values with confidence intervals\n";
+              comment += "- Statistical significance tests\n";
+              comment += "- Whether differences are meaningful or due to random variation\n";
             } else {
               comment += "### ❌ Evaluation Failed\n\n";
               comment += "The evaluation encountered an error. Please check the workflow logs.\n\n";
-            }
-            
-            comment += "### 📊 Configuration\n\n";
-            comment += `- **Agent IDs:** \`${{ steps.set-agents.outputs.agent_ids }}\`\n`;
-            comment += `- **Deployment:** \`${{ vars.AZURE_DEPLOYMENT_NAME }}\`\n`;
-            comment += `- **Test Queries:** 10\n`;
-            
-            if ("${{ steps.check-baseline.outputs.baseline_exists }}" === "true") {
-              comment += "\n### 📈 Baseline Comparison\n\n";
-              comment += "A baseline exists. For detailed statistical comparison:\n";
-              comment += "1. Include both baseline and variant agent IDs in the evaluation\n";
-              comment += "2. The official action will automatically perform statistical comparison\n";
-              comment += "3. Results appear in the GitHub Actions summary\n";
-            } else {
-              comment += "\n### 📝 First Evaluation Run\n\n";
-              comment += "This is the first evaluation run. Results will be saved as baseline when merged to main.\n";
+              comment += "**Common issue:** Safety evaluators (violence, hate, sexual) may return 'not applicable' strings that cannot be statistically compared.\n";
+              comment += "**Solution:** Remove safety evaluators from your test data or use numeric-only evaluators.\n";
             }
             
             comment += "\n---\n";
-            comment += `**Run ID:** \`pr-${context.issue.number}-${Date.now()}\`\n`;
             comment += `**Workflow:** [View logs](${context.payload.repository.html_url}/actions/runs/${context.runId})\n`;
             
             // Find and update or create comment

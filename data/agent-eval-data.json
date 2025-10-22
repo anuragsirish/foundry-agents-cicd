@@ -1,13 +1,11 @@
 {
   "name": "CustomerServiceAgentTests",
   "evaluators": [
-    "ToolCallAccuracyEvaluator",
-    "ViolenceEvaluator",
-    "HateUnfairnessEvaluator",
-    "SelfHarmEvaluator",
-    "SexualEvaluator",
-    "IndirectAttackEvaluator",
-    "ProtectedMaterialEvaluator"
+    "RelevanceEvaluator",
+    "CoherenceEvaluator",
+    "FluencyEvaluator",
+    "GroundednessEvaluator",
+    "ToolCallAccuracyEvaluator"
   ],
   "data": [
     {
