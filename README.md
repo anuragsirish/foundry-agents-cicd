@@ -9,6 +9,8 @@ This repository contains everything you need to run automated evaluations in you
 - **AI Agent Evaluations**: For AI Foundry agents with conversation-based testing
 - **GenAI Evaluations**: For generative AI models with structured input/output testing
 - **Local Evaluation Scripts**: Run evaluations locally before committing to CI/CD
+- **🆕 PR-Based CI/CD**: Automated evaluation on pull requests with baseline comparison
+- **🚦 Quality Gates**: Automatic blocking of PRs if quality degrades >5%
 
 ## 📋 Prerequisites
 
@@ -77,16 +79,23 @@ python scripts/local_genai_eval.py
 foundry-agents-cicd/
 ├── .github/
 │   └── workflows/
-│       ├── ai-agent-eval.yml          # AI Agent evaluation workflow
+│       ├── agent-eval-on-pr.yml        # 🆕 PR evaluation workflow
+│       ├── update-baseline.yml         # 🆕 Baseline update workflow  
+│       ├── ai-agent-eval.yml           # AI Agent evaluation workflow
 │       └── genai-eval.yml              # GenAI evaluation workflow
 ├── data/
 │   ├── agent-eval-data.json            # Test queries for agent evaluation
 │   └── genai-eval-data.jsonl           # Test data for GenAI evaluation
 ├── scripts/
 │   ├── local_agent_eval.py             # Local agent evaluation script
-│   └── local_genai_eval.py             # Local GenAI evaluation script
+│   ├── local_genai_eval.py             # Local GenAI evaluation script
+│   └── initialize_baseline.py          # 🆕 Baseline initialization script
+├── evaluation_results/
+│   ├── baseline/                       # 🆕 Baseline metrics (committed)
+│   └── pr_runs/                        # 🆕 PR evaluation results
 ├── configs/
 │   └── genai-eval-config.json          # GenAI evaluation configuration
+├── CICD_PIPELINE.md                    # 🆕 CI/CD pipeline documentation
 ├── .env.example                        # Environment variables template
 ├── .gitignore
 ├── requirements.txt                    # Python dependencies
@@ -94,6 +103,12 @@ foundry-agents-cicd/
 ```
 
 ## 🔧 Configuration
+
+### Quick Links
+
+- **[🚀 CI/CD Pipeline Setup Guide](./CICD_PIPELINE.md)** - Complete guide for PR-based evaluations
+- [Setup Guide](./SETUP-GUIDE.md) - Detailed Azure setup instructions
+- [Agent Setup](./agent-setup/README.md) - Create and test agents locally
 
 ### GitHub Secrets (Required for CI/CD)
 
@@ -103,6 +118,11 @@ Configure these in GitHub Settings > Secrets and variables > Actions:
 - `AZURE_CLIENT_ID`: Azure service principal client ID
 - `AZURE_TENANT_ID`: Azure tenant ID
 - `AZURE_SUBSCRIPTION_ID`: Azure subscription ID
+- `AZURE_AI_PROJECT_ENDPOINT`: Your AI project endpoint
+- `AZURE_DEPLOYMENT_NAME`: Model deployment name
+- `AGENT_ID_BASELINE`: Your agent ID
+- `AZURE_OPENAI_ENDPOINT`: Azure OpenAI endpoint
+- `AZURE_OPENAI_DEPLOYMENT_NAME`: Evaluator model deployment
 
 **Secrets:**
 - `AZURE_OPENAI_API_KEY`: Azure OpenAI API key (for GenAI evals)

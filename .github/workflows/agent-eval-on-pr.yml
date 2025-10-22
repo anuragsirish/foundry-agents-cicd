@@ -1,0 +1,413 @@
+name: "Agent Evaluation on Pull Request"
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'agent-setup/**'
+      - 'data/agent-eval-data.json'
+      - 'scripts/**'
+      - '.github/workflows/agent-eval-on-pr.yml'
+  
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to evaluate (optional)'
+        required: false
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  run-agent-evaluation:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout PR Branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history to access main branch
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Azure Login using Federated Credentials
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      
+      - name: Check for Baseline Results
+        id: check-baseline
+        run: |
+          # Check if baseline results exist on main branch
+          git fetch origin main
+          
+          # Check if baseline file exists
+          if git show origin/main:evaluation_results/baseline/baseline_metrics.json > /dev/null 2>&1; then
+            echo "baseline_exists=true" >> $GITHUB_OUTPUT
+            echo "📊 Baseline found on main branch"
+            
+            # Extract baseline to temp location
+            git show origin/main:evaluation_results/baseline/baseline_metrics.json > /tmp/baseline_metrics.json
+            
+            echo "Baseline metrics:"
+            cat /tmp/baseline_metrics.json
+          else
+            echo "baseline_exists=false" >> $GITHUB_OUTPUT
+            echo "📝 No baseline found - this will be the first run"
+          fi
+      
+      - name: Set Evaluation Configuration
+        id: config
+        run: |
+          echo "🔍 Evaluation Configuration:"
+          echo "   Agent ID: ${{ vars.AGENT_ID_BASELINE }}"
+          echo "   Project Endpoint: ${{ vars.AZURE_AI_PROJECT_ENDPOINT }}"
+          echo "   Deployment: ${{ vars.AZURE_DEPLOYMENT_NAME }}"
+          echo "   Baseline exists: ${{ steps.check-baseline.outputs.baseline_exists }}"
+          
+          # Generate unique run ID
+          RUN_ID="pr-${{ github.event.pull_request.number }}-$(date +%Y%m%d-%H%M%S)"
+          echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
+          echo "   Run ID: $RUN_ID"
+      
+      - name: Create Output Directory
+        run: |
+          mkdir -p evaluation_results/pr_runs/${{ steps.config.outputs.run_id }}
+          mkdir -p evaluation_results/baseline
+      
+      - name: Run Agent Evaluation
+        env:
+          AZURE_AI_PROJECT_ENDPOINT: ${{ vars.AZURE_AI_PROJECT_ENDPOINT }}
+          AZURE_DEPLOYMENT_NAME: ${{ vars.AZURE_DEPLOYMENT_NAME }}
+          AGENT_ID_BASELINE: ${{ vars.AGENT_ID_BASELINE }}
+          AZURE_OPENAI_ENDPOINT: ${{ vars.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_API_VERSION: ${{ vars.AZURE_OPENAI_API_VERSION }}
+          AZURE_OPENAI_DEPLOYMENT_NAME: ${{ vars.AZURE_OPENAI_DEPLOYMENT_NAME }}
+        run: |
+          echo "🚀 Running agent evaluation..."
+          python scripts/local_agent_eval.py
+          
+          # Copy results to PR-specific directory
+          cp evaluation_results/agent_eval_output/evaluation_results.json \
+             evaluation_results/pr_runs/${{ steps.config.outputs.run_id }}/evaluation_results.json
+          
+          echo "✅ Evaluation completed"
+      
+      - name: Extract Metrics
+        id: extract-metrics
+        run: |
+          # Extract current metrics
+          python3 << 'EOF'
+          import json
+          import os
+          
+          # Read current evaluation results
+          with open('evaluation_results/agent_eval_output/evaluation_results.json', 'r') as f:
+              results = json.load(f)
+          
+          metrics = results.get('metrics', {})
+          
+          # Extract key metrics
+          current_metrics = {
+              'relevance': metrics.get('relevance', 0),
+              'coherence': metrics.get('coherence', 0),
+              'fluency': metrics.get('fluency', 0),
+              'groundedness': metrics.get('groundedness', 0),
+              'tool_call_accuracy': metrics.get('tool_call_accuracy', 0),
+              'intent_resolution': metrics.get('intent_resolution', 0),
+              'task_adherence': metrics.get('task_adherence', 0),
+              'similarity': metrics.get('similarity', 0),
+              'client_run_duration': metrics.get('client-run-duration-in-seconds', 0),
+              'completion_tokens': metrics.get('completion-tokens', 0),
+              'prompt_tokens': metrics.get('prompt-tokens', 0)
+          }
+          
+          # Save metrics for comparison
+          with open('current_metrics.json', 'w') as f:
+              json.dump(current_metrics, f, indent=2)
+          
+          print("Current metrics extracted:")
+          print(json.dumps(current_metrics, indent=2))
+          EOF
+      
+      - name: Compare with Baseline
+        id: compare
+        if: steps.check-baseline.outputs.baseline_exists == 'true'
+        run: |
+          python3 << 'EOF'
+          import json
+          import os
+          
+          # Read current metrics
+          with open('current_metrics.json', 'r') as f:
+              current = json.load(f)
+          
+          # Read baseline metrics
+          with open('/tmp/baseline_metrics.json', 'r') as f:
+              baseline = json.load(f)
+          
+          # Calculate differences
+          comparison = {}
+          for metric, current_value in current.items():
+              baseline_value = baseline.get(metric, 0)
+              
+              if baseline_value == 0:
+                  diff_pct = 0
+              else:
+                  diff_pct = ((current_value - baseline_value) / baseline_value) * 100
+              
+              comparison[metric] = {
+                  'current': current_value,
+                  'baseline': baseline_value,
+                  'diff': current_value - baseline_value,
+                  'diff_pct': diff_pct
+              }
+          
+          # Save comparison
+          with open('comparison.json', 'w') as f:
+              json.dump(comparison, f, indent=2)
+          
+          # Determine if evaluation passed (no metric degraded by more than 5%)
+          quality_metrics = ['relevance', 'coherence', 'fluency', 'groundedness', 
+                            'tool_call_accuracy', 'intent_resolution', 'task_adherence']
+          
+          failed_metrics = []
+          for metric in quality_metrics:
+              if metric in comparison:
+                  if comparison[metric]['diff_pct'] < -5:  # More than 5% degradation
+                      failed_metrics.append(metric)
+          
+          if failed_metrics:
+              print(f"⚠️ Quality degradation detected in: {', '.join(failed_metrics)}")
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                  f.write('evaluation_passed=false\n')
+                  f.write(f'failed_metrics={",".join(failed_metrics)}\n')
+          else:
+              print("✅ All quality metrics meet threshold")
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                  f.write('evaluation_passed=true\n')
+                  f.write('failed_metrics=\n')
+          
+          print("\nComparison completed:")
+          print(json.dumps(comparison, indent=2))
+          EOF
+      
+      - name: Generate PR Comment
+        id: generate-comment
+        run: |
+          python3 << 'EOF'
+          import json
+          import os
+          
+          # Read current metrics
+          with open('current_metrics.json', 'r') as f:
+              current = json.load(f)
+          
+          baseline_exists = "${{ steps.check-baseline.outputs.baseline_exists }}" == "true"
+          
+          # Start building comment
+          comment = "## 🤖 Agent Evaluation Results\n\n"
+          
+          if baseline_exists:
+              # Read comparison
+              with open('comparison.json', 'r') as f:
+                  comparison = json.load(f)
+              
+              eval_passed = "${{ steps.compare.outputs.evaluation_passed }}" == "true"
+              
+              if eval_passed:
+                  comment += "### ✅ Evaluation Passed\n\n"
+                  comment += "All quality metrics meet the baseline threshold (no degradation > 5%)\n\n"
+              else:
+                  failed = "${{ steps.compare.outputs.failed_metrics }}"
+                  comment += "### ⚠️ Quality Degradation Detected\n\n"
+                  comment += f"The following metrics degraded by more than 5%: **{failed}**\n\n"
+              
+              comment += "### 📊 Metrics Comparison\n\n"
+              comment += "| Metric | Current | Baseline | Change | % Change |\n"
+              comment += "|--------|---------|----------|---------|----------|\n"
+              
+              # Quality metrics
+              quality_metrics = [
+                  ('relevance', 'Relevance'),
+                  ('coherence', 'Coherence'),
+                  ('fluency', 'Fluency'),
+                  ('groundedness', 'Groundedness'),
+                  ('tool_call_accuracy', 'Tool Call Accuracy'),
+                  ('intent_resolution', 'Intent Resolution'),
+                  ('task_adherence', 'Task Adherence'),
+                  ('similarity', 'Similarity')
+              ]
+              
+              for key, label in quality_metrics:
+                  if key in comparison:
+                      c = comparison[key]
+                      current_val = f"{c['current']:.3f}"
+                      baseline_val = f"{c['baseline']:.3f}"
+                      diff = f"{c['diff']:+.3f}"
+                      diff_pct = f"{c['diff_pct']:+.1f}%"
+                      
+                      # Add emoji indicator
+                      if c['diff_pct'] > 5:
+                          emoji = "🟢"
+                      elif c['diff_pct'] < -5:
+                          emoji = "🔴"
+                      else:
+                          emoji = "🟡"
+                      
+                      comment += f"| {emoji} {label} | {current_val} | {baseline_val} | {diff} | {diff_pct} |\n"
+              
+              # Performance metrics
+              comment += "\n### ⚡ Performance Metrics\n\n"
+              comment += "| Metric | Current | Baseline | Change |\n"
+              comment += "|--------|---------|----------|--------|\n"
+              
+              perf_metrics = [
+                  ('client_run_duration', 'Avg Response Time (s)'),
+                  ('completion_tokens', 'Completion Tokens'),
+                  ('prompt_tokens', 'Prompt Tokens')
+              ]
+              
+              for key, label in perf_metrics:
+                  if key in comparison:
+                      c = comparison[key]
+                      current_val = f"{c['current']:.2f}"
+                      baseline_val = f"{c['baseline']:.2f}"
+                      diff = f"{c['diff']:+.2f}"
+                      comment += f"| {label} | {current_val} | {baseline_val} | {diff} |\n"
+          
+          else:
+              # First run - no baseline
+              comment += "### 📝 First Evaluation Run\n\n"
+              comment += "This is the first evaluation run. Results will be saved as baseline when merged to main.\n\n"
+              comment += "### 📊 Current Metrics\n\n"
+              comment += "| Metric | Score |\n"
+              comment += "|--------|-------|\n"
+              
+              metrics_display = [
+                  ('relevance', 'Relevance'),
+                  ('coherence', 'Coherence'),
+                  ('fluency', 'Fluency'),
+                  ('groundedness', 'Groundedness'),
+                  ('tool_call_accuracy', 'Tool Call Accuracy'),
+                  ('intent_resolution', 'Intent Resolution'),
+                  ('task_adherence', 'Task Adherence'),
+                  ('similarity', 'Similarity'),
+                  ('client_run_duration', 'Avg Response Time (s)'),
+                  ('completion_tokens', 'Completion Tokens'),
+                  ('prompt_tokens', 'Prompt Tokens')
+              ]
+              
+              for key, label in metrics_display:
+                  if key in current:
+                      value = f"{current[key]:.3f}" if current[key] < 100 else f"{current[key]:.0f}"
+                      comment += f"| {label} | {value} |\n"
+          
+          comment += "\n---\n"
+          comment += f"**Run ID:** `${{ steps.config.outputs.run_id }}`\n"
+          comment += f"**Agent ID:** `${{ vars.AGENT_ID_BASELINE }}`\n"
+          comment += f"**Test Queries:** 10\n"
+          
+          # Save comment to file
+          with open('pr_comment.md', 'w') as f:
+              f.write(comment)
+          
+          print("Comment generated successfully")
+          EOF
+      
+      - name: Post PR Comment
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const comment = fs.readFileSync('pr_comment.md', 'utf8');
+            
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number
+            });
+            
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('🤖 Agent Evaluation Results')
+            );
+            
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: comment
+              });
+              console.log('Updated existing PR comment');
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: comment
+              });
+              console.log('Created new PR comment');
+            }
+      
+      - name: Upload Evaluation Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: evaluation-results-${{ steps.config.outputs.run_id }}
+          path: |
+            evaluation_results/pr_runs/${{ steps.config.outputs.run_id }}/
+            current_metrics.json
+            comparison.json
+          retention-days: 30
+      
+      - name: Check Quality Gate
+        if: steps.check-baseline.outputs.baseline_exists == 'true' && steps.compare.outputs.evaluation_passed == 'false'
+        run: |
+          echo "⚠️ Quality gate failed!"
+          echo "The following metrics degraded by more than 5%:"
+          echo "${{ steps.compare.outputs.failed_metrics }}"
+          echo ""
+          echo "Please review the evaluation results and consider:"
+          echo "  1. Investigating why metrics degraded"
+          echo "  2. Adjusting your changes to maintain quality"
+          echo "  3. If intentional, document the reasoning"
+          echo ""
+          echo "To proceed anyway, add a comment to the PR explaining the degradation."
+          exit 1
+      
+      - name: Evaluation Summary
+        if: success()
+        run: |
+          echo "✅ Agent evaluation completed successfully!"
+          echo ""
+          echo "📊 Results have been posted to the PR"
+          echo "📁 Detailed results saved as artifacts"
+          echo ""
+          if [ "${{ steps.check-baseline.outputs.baseline_exists }}" == "true" ]; then
+            echo "✓ Compared against baseline"
+            if [ "${{ steps.compare.outputs.evaluation_passed }}" == "true" ]; then
+              echo "✓ All quality metrics within threshold"
+            fi
+          else
+            echo "📝 First evaluation run - will become baseline when merged"
+          fi

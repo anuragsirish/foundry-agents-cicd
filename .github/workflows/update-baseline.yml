@@ -1,0 +1,185 @@
+name: "Update Baseline After Merge"
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'agent-setup/**'
+      - 'data/agent-eval-data.json'
+      - 'scripts/**'
+
+permissions:
+  id-token: write
+  contents: write
+
+jobs:
+  update-baseline:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Azure Login using Federated Credentials
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      
+      - name: Run Baseline Evaluation
+        env:
+          AZURE_AI_PROJECT_ENDPOINT: ${{ vars.AZURE_AI_PROJECT_ENDPOINT }}
+          AZURE_DEPLOYMENT_NAME: ${{ vars.AZURE_DEPLOYMENT_NAME }}
+          AGENT_ID_BASELINE: ${{ vars.AGENT_ID_BASELINE }}
+          AZURE_OPENAI_ENDPOINT: ${{ vars.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_API_VERSION: ${{ vars.AZURE_OPENAI_API_VERSION }}
+          AZURE_OPENAI_DEPLOYMENT_NAME: ${{ vars.AZURE_OPENAI_DEPLOYMENT_NAME }}
+        run: |
+          echo "🚀 Running baseline evaluation on main branch..."
+          python scripts/local_agent_eval.py
+          echo "✅ Evaluation completed"
+      
+      - name: Create Baseline Directory
+        run: |
+          mkdir -p evaluation_results/baseline
+      
+      - name: Extract and Save Baseline Metrics
+        run: |
+          python3 << 'EOF'
+          import json
+          from datetime import datetime
+          
+          # Read evaluation results
+          with open('evaluation_results/agent_eval_output/evaluation_results.json', 'r') as f:
+              results = json.load(f)
+          
+          metrics = results.get('metrics', {})
+          
+          # Extract key metrics for baseline
+          baseline_metrics = {
+              'relevance': metrics.get('relevance', 0),
+              'coherence': metrics.get('coherence', 0),
+              'fluency': metrics.get('fluency', 0),
+              'groundedness': metrics.get('groundedness', 0),
+              'tool_call_accuracy': metrics.get('tool_call_accuracy', 0),
+              'intent_resolution': metrics.get('intent_resolution', 0),
+              'task_adherence': metrics.get('task_adherence', 0),
+              'similarity': metrics.get('similarity', 0),
+              'client_run_duration': metrics.get('client-run-duration-in-seconds', 0),
+              'completion_tokens': metrics.get('completion-tokens', 0),
+              'prompt_tokens': metrics.get('prompt-tokens', 0),
+              'updated_at': datetime.utcnow().isoformat(),
+              'commit_sha': '${{ github.sha }}'
+          }
+          
+          # Save baseline metrics
+          with open('evaluation_results/baseline/baseline_metrics.json', 'w') as f:
+              json.dump(baseline_metrics, f, indent=2)
+          
+          # Copy full results to baseline
+          with open('evaluation_results/baseline/baseline_full_results.json', 'w') as f:
+              json.dump(results, f, indent=2)
+          
+          print("✅ Baseline metrics saved:")
+          print(json.dumps(baseline_metrics, indent=2))
+          EOF
+      
+      - name: Check for Changes
+        id: check-changes
+        run: |
+          git add evaluation_results/baseline/
+          if git diff --staged --quiet; then
+            echo "changes=false" >> $GITHUB_OUTPUT
+            echo "No changes to baseline metrics"
+          else
+            echo "changes=true" >> $GITHUB_OUTPUT
+            echo "Baseline metrics updated"
+          fi
+      
+      - name: Commit Baseline Updates
+        if: steps.check-changes.outputs.changes == 'true'
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add evaluation_results/baseline/
+          git commit -m "Update baseline metrics [skip ci]
+          
+          Updated baseline metrics from commit ${{ github.sha }}
+          Agent ID: ${{ vars.AGENT_ID_BASELINE }}
+          Timestamp: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+          
+          git push
+      
+      - name: Create Baseline Summary
+        if: steps.check-changes.outputs.changes == 'true'
+        run: |
+          echo "# 📊 Baseline Updated" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The baseline metrics have been updated on the main branch." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Agent ID:** \`${{ vars.AGENT_ID_BASELINE }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Metrics" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          python3 << 'EOF'
+          import json
+          
+          with open('evaluation_results/baseline/baseline_metrics.json', 'r') as f:
+              metrics = json.load(f)
+          
+          print("| Metric | Value |")
+          print("|--------|-------|")
+          
+          display_metrics = [
+              ('relevance', 'Relevance'),
+              ('coherence', 'Coherence'),
+              ('fluency', 'Fluency'),
+              ('groundedness', 'Groundedness'),
+              ('tool_call_accuracy', 'Tool Call Accuracy'),
+              ('intent_resolution', 'Intent Resolution'),
+              ('task_adherence', 'Task Adherence'),
+              ('similarity', 'Similarity'),
+              ('client_run_duration', 'Avg Response Time (s)'),
+              ('completion_tokens', 'Completion Tokens'),
+              ('prompt_tokens', 'Prompt Tokens')
+          ]
+          
+          for key, label in display_metrics:
+              if key in metrics:
+                  value = f"{metrics[key]:.3f}" if metrics[key] < 100 else f"{metrics[key]:.0f}"
+                  print(f"| {label} | {value} |")
+          EOF
+      
+      - name: Upload Baseline Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: baseline-metrics-${{ github.sha }}
+          path: evaluation_results/baseline/
+          retention-days: 90
+      
+      - name: Completion Message
+        run: |
+          if [ "${{ steps.check-changes.outputs.changes }}" == "true" ]; then
+            echo "✅ Baseline metrics updated and committed to main branch"
+            echo "   Future PRs will be compared against these metrics"
+          else
+            echo "ℹ️ No changes to baseline metrics"
+          fi
