@@ -1,77 +1,139 @@
-# Azure AI Foundry - CI/CD Evaluation Demo
+# 🤖 Azure AI Foundry - Dual-Agent Evaluation CI/CD
 
-This project demonstrates how to integrate Azure AI Foundry evaluation capabilities into GitHub Actions CI/CD pipelines for automated testing of AI agents and generative AI models.
+This project demonstrates automated AI agent evaluation and comparison using Azure AI Foundry and GitHub Actions. Every pull request automatically evaluates both baseline and V2 agents, compares their performance, and provides clear metrics for merge decisions.
 
 ## 🎯 Overview
 
-This repository contains everything you need to run automated evaluations in your CI/CD pipeline:
+**Automated Agent Quality Assurance** - Never merge agent changes without knowing their impact on quality metrics.
 
-- **AI Agent Evaluations**: For AI Foundry agents with conversation-based testing
-- **GenAI Evaluations**: For generative AI models with structured input/output testing
-- **Local Evaluation Scripts**: Run evaluations locally before committing to CI/CD
-- **🆕 PR-Based CI/CD**: Automated evaluation on pull requests with baseline comparison
-- **🚦 Quality Gates**: Automatic blocking of PRs if quality degrades >5%
+### Key Features
 
-## 📋 Prerequisites
+- **🎯 Dual-Agent Evaluation**: Automatically evaluates baseline and V2 agents on every PR
+- **📊 Visual Comparison**: Clear indicators (🟢 improvements, 🔴 regressions, 🟡 neutral)
+- **💬 PR Integration**: Results posted directly to PR comments
+- **📋 GitHub Actions Summary**: Full comparison table visible on Actions tab
+- **✅ Always Passes**: Workflow provides metrics, you decide whether to merge
+- **📦 Artifacts**: Full evaluation results downloadable for deep analysis
+- **� Secure**: Uses Azure federated credentials (OIDC) - no secrets in code
+
+## � What You Get
+
+When you create a PR, the workflow automatically:
+
+1. **Evaluates Baseline Agent** against test queries
+2. **Evaluates V2 Agent** against the same queries
+3. **Compares Results** across 5 quality dimensions:
+   - Relevance
+   - Coherence
+   - Fluency
+   - Groundedness
+   - Tool Call Accuracy
+4. **Posts Results** to PR comments and GitHub Actions summary
+5. **Uploads Artifacts** with full evaluation JSON
+
+### Example Output
+
+```
+📊 Baseline vs V2 Agent Comparison
+
+| Metric              | Baseline | V2   | Change  | Status |
+|---------------------|----------|------|---------|--------|
+| Relevance           | 4.20     | 4.50 | +0.30   | 🟢     |
+| Coherence           | 4.10     | 4.15 | +0.05   | 🟡     |
+| Fluency             | 4.30     | 4.25 | -0.05   | 🟡     |
+| Groundedness        | 4.00     | 4.20 | +0.20   | 🟢     |
+| Tool Call Accuracy  | 0.85     | 0.90 | +0.05   | 🟢     |
+
+Summary:
+- 📈 Improvements: 3
+- 📉 Regressions: 0
+- ➖ Neutral: 2
+```
+
+## �📋 Prerequisites
 
 1. **Azure AI Foundry Project**
    - Create a project in [Azure AI Foundry](https://ai.azure.com)
-   - Deploy an evaluation judge model (e.g., GPT-4o)
+   - Deploy a GPT-4 or GPT-4.1 model for evaluation
+   - Create baseline and V2 agents
 
 2. **GitHub Repository Setup**
    - Fork or clone this repository
-   - Configure GitHub Actions secrets and variables
+   - Configure federated credentials (OIDC)
+   - Set up GitHub Actions variables
 
 3. **Python Environment** (for local testing)
-   - Python 3.9+
+   - Python 3.11+
    - pip or conda
 
 ## 🚀 Quick Start
 
-### 1. Clone and Setup
+### 1. Clone Repository
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/anuragsirish/foundry-agents-cicd.git
 cd foundry-agents-cicd
-
-# Copy environment template
-cp .env.example .env
-
-# Edit .env with your Azure credentials
-# (See Configuration section below)
 ```
 
-### 2. Install Dependencies
+### 2. Set Up Azure (One-time)
+
+See [`SETUP-GUIDE.md`](SETUP-GUIDE.md) for detailed instructions on:
+- Creating Azure AI Foundry project
+- Deploying evaluation model
+- Setting up federated credentials
+- Configuring GitHub Actions variables
+
+### 3. Configure GitHub Variables
 
 ```bash
+# Set required variables
+gh variable set AGENT_ID_BASELINE --body "asst_xxxxx"
+gh variable set AGENT_ID_V2 --body "asst_yyyyy"
+gh variable set AZURE_AI_PROJECT_ENDPOINT --body "https://..."
+gh variable set AZURE_DEPLOYMENT_NAME --body "gpt-4.1"
+gh variable set AZURE_CLIENT_ID --body "xxxxx"
+gh variable set AZURE_TENANT_ID --body "xxxxx"
+gh variable set AZURE_SUBSCRIPTION_ID --body "xxxxx"
+```
+
+### 4. Test Locally (Optional)
+
+```bash
+# Install dependencies
 pip install -r requirements.txt
-```
 
-### 3. Configure Environment Variables
+# Set environment variables
+export AGENT_ID_BASELINE="asst_xxxxx"
+export AZURE_AI_PROJECT_ENDPOINT="https://..."
+export AZURE_DEPLOYMENT_NAME="gpt-4.1"
 
-Edit `.env` file with your Azure credentials:
-
-```bash
-# Required for Agent Evaluations
-AZURE_AI_PROJECT_ENDPOINT=https://your-project.eastus.api.azureml.ms
-AZURE_DEPLOYMENT_NAME=gpt-4o
-AGENT_ID_BASELINE=your-agent-id
-
-# Required for GenAI Evaluations
-AZURE_OPENAI_ENDPOINT=https://your-openai.openai.azure.com/
-AZURE_OPENAI_CHAT_DEPLOYMENT=gpt-4o
-AZURE_OPENAI_API_KEY=your-api-key
-```
-
-### 4. Run Local Evaluation
-
-```bash
-# Test AI Agent Evaluation
+# Run evaluation
 python scripts/local_agent_eval.py
-
-# Test GenAI Evaluation
-python scripts/local_genai_eval.py
 ```
+
+### 5. Create a Test PR
+
+```bash
+# Create a new branch
+git checkout -b test/agent-evaluation
+
+# Make a small change to trigger workflow
+echo '{"query": "Test query"}' >> data/agent-eval-data.json
+
+# Commit and push
+git add data/agent-eval-data.json
+git commit -m "test: Trigger agent evaluation"
+git push -u origin test/agent-evaluation
+
+# Create PR
+gh pr create --title "Test: Agent Evaluation" --body "Testing dual-agent evaluation workflow"
+```
+
+### 6. View Results
+
+- Check **GitHub Actions tab** for workflow progress
+- See **PR comments** for comparison table
+- Download **artifacts** for full JSON results
 
 ## 📁 Project Structure
 
@@ -79,57 +141,67 @@ python scripts/local_genai_eval.py
 foundry-agents-cicd/
 ├── .github/
 │   └── workflows/
-│       ├── agent-eval-on-pr.yml        # 🆕 PR evaluation workflow
-│       ├── update-baseline.yml         # 🆕 Baseline update workflow  
-│       ├── ai-agent-eval.yml           # AI Agent evaluation workflow
-│       └── genai-eval.yml              # GenAI evaluation workflow
+│       ├── agent-eval-on-pr.yml              # 🤖 Dual-agent evaluation on PR (ACTIVE)
+│       ├── agent-eval-on-pr-official.yml     # Microsoft action (DISABLED)
+│       └── update-baseline.yml               # Baseline update workflow
+├── agent-setup/
+│   ├── create_agent_v2.py                    # Script to create V2 agent
+│   └── test_agent_locally.py                 # Local agent testing
 ├── data/
-│   ├── agent-eval-data.json            # Test queries for agent evaluation
-│   └── genai-eval-data.jsonl           # Test data for GenAI evaluation
+│   └── agent-eval-data.json                  # Test queries and evaluators config
 ├── scripts/
-│   ├── local_agent_eval.py             # Local agent evaluation script
-│   ├── local_genai_eval.py             # Local GenAI evaluation script
-│   └── initialize_baseline.py          # 🆕 Baseline initialization script
+│   ├── local_agent_eval.py                   # Local evaluation script
+│   └── initialize_baseline.py                # Initialize baseline metrics
 ├── evaluation_results/
-│   ├── baseline/                       # 🆕 Baseline metrics (committed)
-│   └── pr_runs/                        # 🆕 PR evaluation results
-├── configs/
-│   └── genai-eval-config.json          # GenAI evaluation configuration
-├── CICD_PIPELINE.md                    # 🆕 CI/CD pipeline documentation
-├── .env.example                        # Environment variables template
-├── .gitignore
+│   ├── baseline/                             # Baseline agent results
+│   ├── v2/                                   # V2 agent results
+│   └── agent_eval_output/                    # Raw evaluation output
+├── docs/
+│   ├── SETUP-GUIDE.md                        # Detailed setup instructions
+│   ├── ARCHITECTURE.md                       # System architecture
+│   ├── CICD_PIPELINE.md                      # Pipeline documentation
+│   ├── WORKFLOW_COMPARISON.md                # Workflow approach comparison
+│   ├── QUICK_REFERENCE.md                    # Quick command reference
+│   ├── DEMO_GUIDE.md                         # Customer demo guide
+│   └── IMPLEMENTATION_SUMMARY.md             # Implementation details
+├── requirements.txt                          # Python dependencies
+└── README.md                                 # This file
 ├── requirements.txt                    # Python dependencies
 └── README.md
 ```
 
 ## 🔧 Configuration
 
-### Quick Links
+### GitHub Variables (Required)
 
-- **[🚀 CI/CD Pipeline Setup Guide](./CICD_PIPELINE.md)** - Complete guide for PR-based evaluations
-- [Setup Guide](./SETUP-GUIDE.md) - Detailed Azure setup instructions
-- [Agent Setup](./agent-setup/README.md) - Create and test agents locally
+Configure these in GitHub Settings > Secrets and variables > Actions > Variables:
 
-### GitHub Secrets (Required for CI/CD)
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `AGENT_ID_BASELINE` | Baseline agent ID | `asst_z8OW7ueROQbJydYkgLXG1lid` |
+| `AGENT_ID_V2` | V2 agent ID to compare | `asst_Q15Vo007Ejlu1jSWGj1kuncR` |
+| `AZURE_CLIENT_ID` | Service principal client ID | `7c64d271-6345-43b3-b9ba-...` |
+| `AZURE_TENANT_ID` | Azure tenant ID | `ed276d0c-896f-484d-881f-...` |
+| `AZURE_SUBSCRIPTION_ID` | Azure subscription ID | `0debeb64-562c-44d8-9966-...` |
+| `AZURE_AI_PROJECT_ENDPOINT` | AI Foundry project endpoint | `https://xxx.services.ai.azure.com/api/projects/...` |
+| `AZURE_DEPLOYMENT_NAME` | Model deployment name | `gpt-4.1` |
 
-Configure these in GitHub Settings > Secrets and variables > Actions:
+### Quick Configuration
 
-**Variables:**
-- `AZURE_CLIENT_ID`: Azure service principal client ID
-- `AZURE_TENANT_ID`: Azure tenant ID
-- `AZURE_SUBSCRIPTION_ID`: Azure subscription ID
-- `AZURE_AI_PROJECT_ENDPOINT`: Your AI project endpoint
-- `AZURE_DEPLOYMENT_NAME`: Model deployment name
-- `AGENT_ID_BASELINE`: Your agent ID
-- `AZURE_OPENAI_ENDPOINT`: Azure OpenAI endpoint
-- `AZURE_OPENAI_DEPLOYMENT_NAME`: Evaluator model deployment
+```bash
+# Set all variables at once
+gh variable set AGENT_ID_BASELINE --body "asst_xxxxx"
+gh variable set AGENT_ID_V2 --body "asst_yyyyy"
+gh variable set AZURE_CLIENT_ID --body "xxxxx"
+gh variable set AZURE_TENANT_ID --body "xxxxx"
+gh variable set AZURE_SUBSCRIPTION_ID --body "xxxxx"
+gh variable set AZURE_AI_PROJECT_ENDPOINT --body "https://..."
+gh variable set AZURE_DEPLOYMENT_NAME --body "gpt-4.1"
+```
 
-**Secrets:**
-- `AZURE_OPENAI_API_KEY`: Azure OpenAI API key (for GenAI evals)
+### Azure Federated Credentials (OIDC)
 
-### Azure Federated Credentials Setup
-
-For GitHub Actions to authenticate with Azure, set up federated credentials:
+The workflow uses federated credentials for secure authentication without storing secrets.
 
 1. Go to Azure Portal > Azure Active Directory > App Registrations
 2. Select your application
@@ -140,164 +212,257 @@ For GitHub Actions to authenticate with Azure, set up federated credentials:
    - **Repository**: Your repo
    - **Environment/Branch**: main (or your branch)
 
-## 📊 Evaluation Types
+## 📊 Evaluation Metrics
 
-### AI Agent Evaluations
+The workflow evaluates agents across 5 quality dimensions:
 
-Best for testing conversational AI agents built in Azure AI Foundry.
+### Quality Metrics (1-5 scale)
 
-**Supported Evaluators:**
-- General: Coherence, Fluency
-- RAG: Groundedness, Relevance
-- Safety: Violence, Sexual, SelfHarm, HateUnfairness, IndirectAttack
-- Agent-specific: IntentResolution, TaskAdherence, ToolCallAccuracy
+| Metric | Description | What it measures |
+|--------|-------------|------------------|
+| **Relevance** | How relevant is the response to the query? | Alignment with user intent |
+| **Coherence** | Does the response flow logically? | Internal consistency |
+| **Fluency** | Is the response grammatically correct? | Language quality |
+| **Groundedness** | Is the response based on provided context? | Factual accuracy |
+| **Tool Call Accuracy** | Did the agent use the right tools? | Tool selection & usage |
 
-**Data Format:**
+### Status Indicators
+
+- 🟢 **Green**: V2 improved over baseline
+- 🔴 **Red**: V2 regressed from baseline
+- 🟡 **Yellow**: No significant change
+
+### Test Data Format
+
+Edit `data/agent-eval-data.json`:
+
 ```json
 {
-  "name": "MyTestData",
-  "evaluators": ["RelevanceEvaluator", "CoherenceEvaluator"],
+  "name": "CustomerServiceAgentEval",
+  "evaluators": [
+    "RelevanceEvaluator",
+    "CoherenceEvaluator",
+    "FluencyEvaluator",
+    "GroundednessEvaluator",
+    "ToolCallAccuracyEvaluator"
+  ],
   "data": [
-    {"query": "Tell me about Tokyo?"},
-    {"query": "Where is Italy?"}
+    {"query": "What are your return policies?"},
+    {"query": "How do I track my order?"},
+    {"query": "Do you ship internationally?"}
   ]
 }
 ```
 
-### GenAI Evaluations
+## 🔄 Workflow Triggers
 
-Best for testing generative AI models with structured inputs and outputs.
+The evaluation workflow runs automatically on:
 
-**Supported Evaluators:**
-- All AI Agent evaluators
-- Additional: QA, Similarity, F1Score, BleuScore, GroundednessProEvaluator
+- **Pull Requests** to `main` branch when these files change:
+  - `agent-setup/**` (agent code changes)
+  - `data/agent-eval-data.json` (test queries)
+  - `.github/workflows/agent-eval-on-pr.yml` (workflow updates)
 
-**Data Format:**
-```jsonl
-{"query": "Tell me about Tokyo?", "response": "Tokyo is the capital...", "ground_truth": "Tokyo is..."}
-{"query": "Where is Italy?", "response": "Italy is in Europe...", "ground_truth": "Italy is..."}
-```
-
-## 🔄 CI/CD Integration
-
-### Trigger Options
-
-Both workflows support:
-- **Manual trigger**: `workflow_dispatch`
-- **Push to main**: Automatic on commits to main branch
-- **Pull request**: Run on PR creation/update
+- **Manual trigger** via `workflow_dispatch` for testing
 
 ### Customizing Triggers
 
-Edit `.github/workflows/*.yml` to add conditional triggers:
+Edit `.github/workflows/agent-eval-on-pr.yml`:
 
 ```yaml
 on:
-  push:
+  pull_request:
     branches: [main]
     paths:
-      - 'prompts/**'          # Only run when prompts change
-      - 'agent-config/**'     # Only run when agent config changes
+      - 'agent-setup/**'
+      - 'data/agent-eval-data.json'
+      # Add your paths here
 ```
 
 ## 📈 Viewing Results
 
-### In GitHub Actions
+### GitHub Actions Tab
 
-1. Go to your repository on GitHub
-2. Click **Actions** tab
-3. Select the workflow run
-4. View **Summary** for evaluation results
+1. Go to repository **Actions** tab
+2. Click on latest workflow run
+3. Scroll to **Summary** section
+4. View comparison table with metrics
 
-### In Azure AI Foundry
+### PR Comments
 
-Results include links to Azure AI Foundry portal for detailed analysis:
-- Individual test case results
-- Confidence intervals
-- Statistical significance (when comparing multiple agents)
+- Automated bot comment posts results
+- Includes comparison table
+- Shows agent IDs and run details
+- Links to workflow run and artifacts
 
-## 🎯 Demo Scenarios
+### Artifacts
 
-### Scenario 1: Single Agent Evaluation
+Download full evaluation results:
+1. Click on workflow run
+2. Scroll to **Artifacts** section
+3. Download `evaluation-results-*`
+4. Contains:
+   - `baseline_results.json` - Full baseline evaluation
+   - `v2_results.json` - Full V2 evaluation
+   - `comparison.json` - Comparison summary
 
-Test a single agent version with confidence intervals:
+## 🎯 Use Cases
 
+### Pre-Production Testing
+
+Ensure agent changes maintain quality before production:
 ```bash
-# Update .env
-AGENT_ID_BASELINE=your-agent-id
-
-# Run locally
-python scripts/local_agent_eval.py
-```
-
-### Scenario 2: A/B Testing (Multiple Agents)
-
-Compare multiple agent versions with statistical significance:
-
-```bash
-# Update .env
-AGENT_ID_BASELINE=agent-v1-id
-AGENT_ID_VARIANT1=agent-v2-id
-
-# Commit and push to trigger CI/CD
-git add .
-git commit -m "Test agent v2 against baseline"
+git checkout -b feature/improve-responses
+# Make agent changes
 git push
+# PR triggers automatic evaluation
+# Review metrics before merging
 ```
 
-### Scenario 3: GenAI Model Evaluation
+### A/B Testing
 
-Evaluate a generative AI model with custom metrics:
+Compare two agent versions:
+- Baseline: Current production agent
+- V2: Experimental agent with new features
 
-```bash
-# Configure genai-eval-config.json
-# Run locally
-python scripts/local_genai_eval.py
-```
+### Continuous Monitoring
+
+Track agent quality over time:
+- Every PR adds a data point
+- Artifacts provide historical record
+- Identify quality trends
 
 ## 🎓 Best Practices
 
-1. **Start Small**: Begin with 5-10 test queries, expand as needed
-2. **Use Specific Triggers**: Avoid running on every commit to minimize costs
-3. **Review Statistical Significance**: For multi-agent comparisons
-4. **Monitor Costs**: Track evaluation token usage in Azure
-5. **Version Your Data**: Keep test data in version control
-6. **Baseline First**: Always establish a baseline before testing variants
+### Test Data Management
+
+1. **Start with 5-10 representative queries**
+   - Cover main use cases
+   - Include edge cases
+   - Add failing scenarios
+
+2. **Keep test data in version control**
+   - Track changes over time
+   - Review test updates in PRs
+   - Document why queries were added
+
+3. **Update tests when agent capabilities change**
+   - Add tests for new features
+   - Remove obsolete tests
+   - Adjust expected behaviors
+
+### Workflow Optimization
+
+1. **Use path filters** to avoid unnecessary runs
+   ```yaml
+   paths:
+     - 'agent-setup/**'
+     - 'data/agent-eval-data.json'
+   ```
+
+2. **Monitor costs** - Track evaluation token usage in Azure
+
+3. **Archive old artifacts** - Clean up artifacts older than 30 days
+
+### Agent Development
+
+1. **Test locally first** - Run `local_agent_eval.py` before pushing
+
+2. **Small, focused changes** - Easier to understand metric impacts
+
+3. **Document regressions** - If merging despite regressions, explain why
 
 ## 🐛 Troubleshooting
 
 ### Common Issues
 
-**Authentication Errors:**
-- Verify federated credentials are configured correctly
-- Check that GitHub variables match Azure app registration
+**Authentication Errors**
+```
+Error: Failed to get federated token
+```
+- Verify federated credentials in Azure Portal
+- Check GitHub variables match Azure app registration
+- Ensure repository environment matches federated credential settings
 
-**Evaluation Failures:**
-- Ensure deployment name is correct and deployed
-- Verify agent IDs are valid and accessible
-- Check data format matches expected schema
+**Agent Not Found**
+```
+Error: Agent ID not found
+```
+- Verify `AGENT_ID_BASELINE` and `AGENT_ID_V2` are correct
+- Check agents exist in Azure AI Foundry project
+- Ensure endpoint URL is correct
 
-**Token Limits:**
-- Reduce dataset size for testing
-- Use appropriate model for evaluation judges
+**Evaluation Timeout**
+```
+Error: Evaluation timed out
+```
+- Reduce number of test queries
+- Check Azure deployment has sufficient capacity
+- Verify deployment is in same region as project
 
-## 📚 Additional Resources
+**No Results in PR Comment**
+```
+Warning: github-script action failed
+```
+- Ensure `pull-requests: write` permission is set
+- Check workflow ran on a pull request (not direct push)
+- Verify bot has access to repository
 
-- [Azure AI Evaluation SDK Documentation](https://learn.microsoft.com/en-us/azure/ai-foundry/how-to/develop/evaluate-sdk)
+## 📚 Documentation
+
+| Document | Description |
+|----------|-------------|
+| [SETUP-GUIDE.md](SETUP-GUIDE.md) | Complete Azure and GitHub setup |
+| [DEMO_GUIDE.md](DEMO_GUIDE.md) | Customer demo instructions |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture and design |
+| [CICD_PIPELINE.md](CICD_PIPELINE.md) | Pipeline implementation details |
+| [QUICK_REFERENCE.md](QUICK_REFERENCE.md) | Command reference guide |
+| [WORKFLOW_COMPARISON.md](WORKFLOW_COMPARISON.md) | Workflow approach comparison |
+
+## � Additional Resources
+
+- [Azure AI Evaluation SDK](https://learn.microsoft.com/en-us/azure/ai-foundry/how-to/develop/evaluate-sdk)
+- [Azure AI Foundry Portal](https://ai.azure.com)
 - [GitHub Actions - Azure Login](https://github.com/Azure/login)
-- [AI Agent Evals Action](https://github.com/microsoft/ai-agent-evals)
-- [GenAI Evals Action](https://github.com/microsoft/genai-evals)
+- [Federated Credentials Guide](https://learn.microsoft.com/en-us/entra/workload-id/workload-identity-federation)
+
+## 📦 Repository Tags
+
+Stable versions are tagged for easy rollback:
+
+| Tag | Description |
+|-----|-------------|
+| `v1.0.0-dual-agent-eval` | Latest stable (dual-agent comparison) |
+
+```bash
+# Checkout a specific version
+git checkout v1.0.0-dual-agent-eval
+
+# List all tags
+git tag -l
+```
+
+## 🤝 Contributing
+
+Contributions welcome! To contribute:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test locally with `local_agent_eval.py`
+5. Submit a pull request
 
 ## 📝 License
 
 MIT License - See LICENSE file for details
 
-## 🤝 Contributing
-
-Contributions welcome! Please open an issue or PR.
-
 ---
 
-**Ready for your Thursday demo!** 🚀
+## 🚀 Quick Links
 
-For questions or support, reach out to the Azure AI Foundry team.
+- 📖 [Setup Guide](SETUP-GUIDE.md) - Get started
+- 🎬 [Demo Guide](DEMO_GUIDE.md) - Present to customers
+- 🏗️ [Architecture](ARCHITECTURE.md) - Understand the design
+- 📋 [Quick Reference](QUICK_REFERENCE.md) - Common commands
+
+**Built with ❤️ using Azure AI Foundry and GitHub Actions**

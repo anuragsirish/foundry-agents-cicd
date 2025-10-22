@@ -1,16 +1,19 @@
-# 🚀 Quick Reference: CI/CD Pipeline
+# 🚀 Quick Reference: Dual-Agent Evaluation Pipeline
 
 ## For Developers
 
-### Making Changes with Agent Code
+### Making Changes and Testing
 
 ```bash
 # 1. Create feature branch
 git checkout -b feature/improve-agent-responses
 
-# 2. Make your changes to agent code
+# 2. Make your changes to agent code or test queries
 
 # 3. (Optional) Test locally
+export AGENT_ID_BASELINE="asst_xxxxx"
+export AZURE_AI_PROJECT_ENDPOINT="https://..."
+export AZURE_DEPLOYMENT_NAME="gpt-4.1"
 python scripts/local_agent_eval.py
 
 # 4. Commit and push
@@ -21,33 +24,49 @@ git push origin feature/improve-agent-responses
 # 5. Create PR
 gh pr create --title "Improve agent responses" --body "Details..."
 
-# 6. Check PR for evaluation results (appears as comment)
-# 7. If quality gate passes, get review and merge
+# 6. Workflow automatically:
+#    - Evaluates baseline agent
+#    - Evaluates V2 agent
+#    - Compares results
+#    - Posts comparison to PR
+#    - Always passes (you decide on merge)
+
+# 7. Review comparison and merge
 ```
 
-### Understanding PR Comments
+### Understanding Comparison Results
 
-#### ✅ Passing Evaluation
+#### 🟢 Green (Improvement)
 ```
-🟢 Relevance +2.5%      # Improvement
-🟡 Coherence +0.5%      # Small change (acceptable)
+| Relevance | 4.20 | 4.50 | +0.30 | 🟢 |
 ```
-**Action:** Review code, merge when approved
+**Meaning:** V2 agent improved on this metric
 
-#### ⚠️ Failing Evaluation
+#### 🔴 Red (Regression)
 ```
-🔴 Relevance -7.2%      # Quality degraded >5%
+| Coherence | 4.50 | 4.20 | -0.30 | 🔴 |
 ```
+**Meaning:** V2 agent regressed on this metric
 **Action:** 
-- Investigate why quality dropped
-- Fix the issue
-- Or document why degradation is acceptable
+- Investigate the cause
+- Fix if unintended
+- Document if acceptable trade-off
+
+#### 🟡 Yellow (Neutral)
+```
+| Fluency | 4.30 | 4.32 | +0.02 | 🟡 |
+```
+**Meaning:** No significant change
 
 ### Common Scenarios
 
-#### "My PR failed the quality gate"
-1. Check which metrics degraded (look for 🔴 in PR comment)
-2. Review your changes - did you modify prompts/instructions?
+#### "V2 has regressions but I want to merge anyway"
+**Answer:** That's OK! The workflow always passes. You decide based on:
+- Is the regression acceptable for the new feature?
+- Does it improve other more important metrics?
+- Is it a known trade-off?
+
+Document your reasoning in the PR description.
 3. Test locally: `python scripts/local_agent_eval.py`
 4. Consider reverting problematic changes
 5. If degradation is intentional, document in PR description
