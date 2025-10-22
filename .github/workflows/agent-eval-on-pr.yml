@@ -374,6 +374,20 @@ jobs:
               console.log('Created new PR comment');
             }
       
+      - name: Post to GitHub Actions Summary
+        if: always()
+        run: |
+          # Copy the PR comment to the GitHub Actions summary
+          cat pr_comment.md >> $GITHUB_STEP_SUMMARY
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Additional Resources:**" >> $GITHUB_STEP_SUMMARY
+          echo "- [View PR](https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }})" >> $GITHUB_STEP_SUMMARY
+          echo "- [View Workflow Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
+          echo "- [Azure AI Foundry Portal](${{ vars.AZURE_AI_PROJECT_ENDPOINT }})" >> $GITHUB_STEP_SUMMARY
+      
       - name: Upload Evaluation Results
         uses: actions/upload-artifact@v4
         with:
