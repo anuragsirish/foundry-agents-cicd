@@ -355,7 +355,7 @@ jobs:
           
           # Binary Aggregates Section (Threshold-based metrics)
           comparison_md += "\n### ✅ Threshold Performance (Pass Rate)\n\n"
-          comparison_md += "| Metric | Baseline | V2 | Status |\n"
+          comparison_md += "| Metric | Baseline | V2 | Change |\n"
           comparison_md += "|--------|----------|----|---------|\n"
           
           print("### ✅ Threshold Performance")
@@ -372,17 +372,10 @@ jobs:
                   
                   baseline_pct = baseline_val * 100
                   v2_pct = v2_val * 100
-                  diff = v2_val - baseline_val
+                  diff_pct = (v2_val - baseline_val) * 100
                   
-                  if abs(diff) < 0.01:
-                      status = "🟡"
-                  elif diff > 0:
-                      status = "🟢"
-                  else:
-                      status = "🔴"
-                  
-                  comparison_md += f"| {metric_name} | {baseline_pct:.0f}% | {v2_pct:.0f}% | {status} |\n"
-                  print(f"{metric_name:<30} Baseline: {baseline_pct:.0f}%  V2: {v2_pct:.0f}%  {status}")
+                  comparison_md += f"| {metric_name} | {baseline_pct:.0f}% | {v2_pct:.0f}% | {diff_pct:+.0f}% |\n"
+                  print(f"{metric_name:<30} Baseline: {baseline_pct:.0f}%  V2: {v2_pct:.0f}%  Change: {diff_pct:+.0f}%")
           
           print()
           
