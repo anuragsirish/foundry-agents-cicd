@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Local AI Agent Evaluation Script
+Local AI Agent Quality Evaluation Script
 
-This script runs agent evaluations locally using the Azure AI Evaluation SDK.
-Based on the golden template from evaluate_updated.py.
+This script runs quality evaluations locally using the Azure AI Evaluation SDK.
+Measures response quality metrics like coherence, fluency, relevance, and task adherence.
 
 Usage:
-    python scripts/local_agent_eval.py
+    python scripts/local_quality_eval.py
 
 Requirements:
     - .env file with required environment variables
@@ -48,9 +48,9 @@ AGENT_NAME = os.getenv("AZURE_AI_AGENT_NAME")
 
 # Paths
 DATA_PATH = Path(__file__).parent.parent / "data" / "agent-eval-data.json"
-OUTPUT_PATH = Path(__file__).parent.parent / "evaluation_results" / "agent_eval_output"
-EVAL_INPUT_PATH = OUTPUT_PATH / "eval-input.jsonl"
-EVAL_OUTPUT_PATH = OUTPUT_PATH / "eval-output.json"
+OUTPUT_PATH = Path(__file__).parent.parent / "evaluation_results" / "quality_eval_output"
+EVAL_INPUT_PATH = OUTPUT_PATH / "quality-eval-input.jsonl"
+EVAL_OUTPUT_PATH = OUTPUT_PATH / "quality-eval-output.json"
 
 
 def validate_environment():
@@ -110,9 +110,9 @@ class OperationalMetricsEvaluator:
 
 
 def run_evaluation():
-    """Run the agent evaluation using AIAgentConverter (golden template approach)."""
+    """Run the agent quality evaluation using AIAgentConverter (golden template approach)."""
     print("\n" + "="*80)
-    print("🚀 AI Agent Evaluation - Azure AI Foundry")
+    print("🚀 AI Agent Quality Evaluation - Azure AI Foundry")
     print("="*80 + "\n")
     
     # Validate environment
@@ -254,7 +254,7 @@ def run_evaluation():
     print("   This may take a few minutes...\n")
     
     results = evaluate(
-        evaluation_name=f"agent-evaluation-{time.strftime('%Y%m%d-%H%M%S')}",
+        evaluation_name=f"quality-evaluation-{time.strftime('%Y%m%d-%H%M%S')}",
         data=str(EVAL_INPUT_PATH),
         evaluators={
             # Operational metrics
@@ -301,7 +301,7 @@ def run_evaluation():
 
 
 def print_eval_results(results, input_path, output_path):
-    """Print the evaluation results in a formatted table"""
+    """Print the quality evaluation results in a formatted table"""
     metrics = results.get("metrics", {})
     
     # Get the maximum length for formatting
@@ -316,7 +316,7 @@ def print_eval_results(results, input_path, output_path):
     
     # Format the header
     print("\n" + "=" * full_len)
-    print("Evaluation Results".center(full_len))
+    print("Quality Evaluation Results".center(full_len))
     print("=" * full_len)
     
     # Print all metrics

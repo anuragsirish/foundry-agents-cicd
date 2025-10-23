@@ -3,8 +3,9 @@ packaging>=21.0
 setuptools>=65.0
 wheel>=0.37.0
 
-# Azure AI Evaluation SDK
-azure-ai-evaluation>=1.0.0
+# Azure AI Evaluation SDK with Red Team support
+# Includes pyrit for comprehensive adversarial testing (65+ attack strategies)
+azure-ai-evaluation[redteam]>=1.0.0
 azure-identity>=1.14.0
 
 # Azure AI Projects SDK (includes Agent Service)
