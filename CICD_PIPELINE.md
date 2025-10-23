@@ -1,15 +1,17 @@
-# CI/CD Pipeline for Agent Evaluations
+# CI/CD Pipeline for Dual-Agent Evaluation
 
-This repository implements a comprehensive CI/CD pipeline for automated agent evaluations with baseline comparison and PR-based quality gates.
+This repository implements an automated CI/CD pipeline that evaluates and compares two AI agents (baseline and V2) on every pull request, providing clear metrics for data-driven merge decisions.
 
 ## 🎯 Overview
 
 The CI/CD pipeline automatically:
-- ✅ Runs agent evaluations on every pull request
-- 📊 Compares metrics against baseline
-- 💬 Posts results as PR comments
-- 🚦 Blocks PRs if quality degrades by >5%
-- 🔄 Updates baseline when PRs merge to main
+- 🎯 Evaluates baseline agent with test queries
+- 🚀 Evaluates V2 agent with same test queries
+- 📊 Compares metrics across 5 quality dimensions
+- 💬 Posts comparison table to PR comments
+- � Displays results in GitHub Actions summary
+- � Uploads full results as artifacts
+- ✅ Always passes (you decide whether to merge)
 
 ## 🏗️ Architecture
 
@@ -24,60 +26,63 @@ The CI/CD pipeline automatically:
 │  PR Workflow (agent-eval-on-pr.yml)     │
 │  ─────────────────────────────────────  │
 │  1. Checkout PR branch                  │
-│  2. Check if baseline exists            │
-│  3. Run agent evaluation                │
-│  4. Compare with baseline (if exists)   │
-│  5. Post results as PR comment          │
-│  6. Block if quality degrades >5%       │
+│  2. Azure authentication (OIDC)         │
+│  3. Evaluate baseline agent             │
+│  4. Evaluate V2 agent                   │
+│  5. Compare metrics (baseline vs V2)    │
+│  6. Post comparison to PR comment       │
+│  7. Display in GitHub Actions summary   │
+│  8. Upload artifacts                    │
+│  9. ✅ Always pass                      │
 └────────┬────────────────────────────────┘
          │
-         │ (If approved & merged)
          ▼
-┌─────────────────────────────────────────┐
-│  Main Branch (update-baseline.yml)      │
-│  ─────────────────────────────────────  │
-│  1. Run evaluation on main              │
-│  2. Save as new baseline                │
-│  3. Commit baseline to repo             │
-└─────────────────────────────────────────┘
+   Developer reviews metrics
+   and decides to merge or not
 ```
 
 ## 📋 Workflows
 
-### 1. **agent-eval-on-pr.yml** - PR Evaluation
-Triggers on:
-- Pull requests to main
-- Changes to agent code or test data
+### **agent-eval-on-pr.yml** - Dual-Agent Evaluation (ACTIVE)
+
+**Triggers on:**
+- Pull requests to `main` branch
+- Changes to:
+  - `agent-setup/**`
+  - `data/agent-eval-data.json`
+  - `.github/workflows/agent-eval-on-pr.yml`
 - Manual workflow dispatch
 
-Features:
-- Automatic baseline detection
-- Metric comparison with ±% change
-- PR comment with results table
-- Quality gate (fails if degradation >5%)
-- Artifact upload for detailed results
+**Features:**
+- 🤖 Evaluates both baseline and V2 agents
+- 📊 Comparison table with status indicators (🟢🔴🟡)
+- 💬 Automated PR comments
+- 📋 GitHub Actions summary display
+- 📦 Artifact uploads (full JSON results)
+- ✅ Always passes (manual merge decision)
+- 🔐 Secure with federated credentials (OIDC)
 
-### 2. **update-baseline.yml** - Baseline Update
-Triggers on:
-- Push to main branch
-- After PR merge
-
-Features:
-- Runs evaluation on main branch
-- Extracts key metrics
-- Commits baseline to repository
-- Preserves history with commit SHA
+**What You Get:**
+- Side-by-side comparison of all metrics
+- Clear indicators for improvements/regressions
+- Downloadable artifacts for deep analysis
+- Full transparency into agent performance
 
 ## 🚀 Setup Instructions
 
-### Step 1: Configure GitHub Secrets & Variables
+### Step 1: Configure GitHub Variables
 
 Add these as **Repository Variables** (Settings → Secrets and variables → Actions → Variables):
 
 ```bash
-AZURE_CLIENT_ID           # Your Azure service principal client ID
-AZURE_TENANT_ID           # Your Azure tenant ID
-AZURE_SUBSCRIPTION_ID     # Your Azure subscription ID
+# Required Variables
+AGENT_ID_BASELINE         # Baseline agent ID (e.g., asst_z8OW...)
+AGENT_ID_V2               # V2 agent ID to compare (e.g., asst_Q15...)
+AZURE_CLIENT_ID           # Azure service principal client ID
+AZURE_TENANT_ID           # Azure tenant ID
+AZURE_SUBSCRIPTION_ID     # Azure subscription ID
+AZURE_AI_PROJECT_ENDPOINT # AI Foundry project endpoint
+AZURE_DEPLOYMENT_NAME     # Model deployment name (e.g., gpt-4.1)
 AZURE_AI_PROJECT_ENDPOINT # https://your-project.region.ai.azure.com/api/projects/your-project
 AZURE_DEPLOYMENT_NAME     # gpt-4o or your model deployment
 AGENT_ID_BASELINE         # Your agent ID (asst_xxxxx)
