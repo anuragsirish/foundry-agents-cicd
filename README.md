@@ -10,16 +10,18 @@ This project demonstrates automated AI agent evaluation and comparison using Azu
 
 - **🎯 Dual-Agent Evaluation**: Automatically evaluates baseline and V2 agents on every PR
 - **📊 Visual Comparison**: Clear indicators (🟢 improvements, 🔴 regressions, 🟡 neutral)
-- **💬 PR Integration**: Results posted directly to PR comments
+- **�️ Safety Evaluation**: Separate workflow for Violence, Sexual, SelfHarm, Hate, IndirectAttack, ProtectedMaterial
+- **�💬 PR Integration**: Results posted directly to PR comments
 - **📋 GitHub Actions Summary**: Full comparison table visible on Actions tab
 - **✅ Always Passes**: Workflow provides metrics, you decide whether to merge
 - **📦 Artifacts**: Full evaluation results downloadable for deep analysis
-- **� Secure**: Uses Azure federated credentials (OIDC) - no secrets in code
+- **🔒 Secure**: Uses Azure federated credentials (OIDC) - no secrets in code
 
 ## � What You Get
 
-When you create a PR, the workflow automatically:
+When you create a PR, two workflows automatically run:
 
+### Quality Metrics Workflow
 1. **Evaluates Baseline Agent** against test queries
 2. **Evaluates V2 Agent** against the same queries
 3. **Compares Results** across 5 quality dimensions:
@@ -30,6 +32,17 @@ When you create a PR, the workflow automatically:
    - Tool Call Accuracy
 4. **Posts Results** to PR comments and GitHub Actions summary
 5. **Uploads Artifacts** with full evaluation JSON
+
+### Safety Evaluation Workflow
+1. **Evaluates Both Agents** for safety concerns:
+   - Violence
+   - Sexual content
+   - Self-harm
+   - Hate/Unfairness
+   - Indirect attacks
+   - Protected material
+2. **Posts Safety Metrics** as separate PR comment
+3. **Provides Defect Rates** for each safety category
 
 ### Example Output
 
@@ -256,14 +269,22 @@ Edit `data/agent-eval-data.json`:
 
 ## 🔄 Workflow Triggers
 
-The evaluation workflow runs automatically on:
+Two evaluation workflows run automatically on PRs:
 
-- **Pull Requests** to `main` branch when these files change:
+### Quality Metrics Workflow (`agent-eval-on-pr.yml`)
+- **Triggers on**: Pull requests when these files change:
   - `agent-setup/**` (agent code changes)
   - `data/agent-eval-data.json` (test queries)
   - `.github/workflows/agent-eval-on-pr.yml` (workflow updates)
 
-- **Manual trigger** via `workflow_dispatch` for testing
+### Safety Evaluation Workflow (`agent-safety-eval-on-pr.yml`)
+- **Triggers on**: Pull requests when these files change:
+  - `agent-setup/**` (agent code changes)
+  - `data/**` (test data)
+  - `scripts/**` (evaluation scripts)
+  - `.github/workflows/agent-safety-eval-on-pr.yml` (workflow updates)
+
+Both workflows support **manual trigger** via `workflow_dispatch` for testing
 
 ### Customizing Triggers
 
