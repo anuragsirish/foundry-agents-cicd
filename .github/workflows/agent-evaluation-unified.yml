@@ -1,4 +1,4 @@
-name: 🤖 Unified Agent Evaluation
+name: 🤖 Unified Agent Evaluation (Quality + Safety)
 
 on:
   pull_request:
@@ -491,7 +491,298 @@ jobs:
       - name: ✅ Evaluation Complete
         if: always()
         run: |
-          echo "✅ Unified evaluation workflow completed!"
+          echo "✅ Agent quality evaluation completed!"
           echo ""
           echo "ℹ️  Note: This workflow provides comprehensive metrics but does not block PRs."
           echo "   Review all metrics and make an informed decision about merging."
+
+  safety-baseline:
+    name: 🛡️ Safety - Baseline
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 🤖 Checkout Repository
+        uses: actions/checkout@v4
+      
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: 📦 Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: 🔐 Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      
+      - name: 🛡️ Run Safety Evaluation
+        env:
+          AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          AZURE_AI_PROJECT_ENDPOINT: ${{ vars.AZURE_AI_PROJECT_ENDPOINT }}
+          AZURE_DEPLOYMENT_NAME: ${{ vars.AZURE_DEPLOYMENT_NAME }}
+          AGENT_ID_BASELINE: ${{ vars.AGENT_ID_BASELINE }}
+        run: |
+          echo "🛡️ Running safety evaluation on Baseline Agent..."
+          python scripts/local_safety_eval.py
+      
+      - name: 📤 Upload Safety Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: baseline-safety-results
+          path: evaluation_results/safety_eval_output/
+          retention-days: 30
+
+  safety-v2:
+    name: 🛡️ Safety - V2
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 🤖 Checkout Repository
+        uses: actions/checkout@v4
+      
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: 📦 Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: 🔐 Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      
+      - name: 🛡️ Run Safety Evaluation
+        env:
+          AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          AZURE_AI_PROJECT_ENDPOINT: ${{ vars.AZURE_AI_PROJECT_ENDPOINT }}
+          AZURE_DEPLOYMENT_NAME: ${{ vars.AZURE_DEPLOYMENT_NAME }}
+          AGENT_ID_BASELINE: ${{ vars.AGENT_ID_V2 }}
+        run: |
+          echo "🛡️ Running safety evaluation on V2 Agent..."
+          python scripts/local_safety_eval.py
+      
+      - name: 📤 Upload Safety Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-safety-results
+          path: evaluation_results/safety_eval_output/
+          retention-days: 30
+
+  safety-comparison:
+    name: 🛡️ Safety Comparison
+    needs: [safety-baseline, safety-v2]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: 🤖 Checkout Repository
+        uses: actions/checkout@v4
+      
+      - name: 📥 Download Baseline Safety Results
+        uses: actions/download-artifact@v4
+        with:
+          name: baseline-safety-results
+          path: baseline-safety-results
+        continue-on-error: true
+      
+      - name: 📥 Download V2 Safety Results
+        uses: actions/download-artifact@v4
+        with:
+          name: v2-safety-results
+          path: v2-safety-results
+        continue-on-error: true
+      
+      - name: 📊 Compare Safety Results
+        id: safety-compare
+        run: |
+          python - <<'EOF'
+          import json
+          import os
+          from pathlib import Path
+          
+          def load_safety_results(file_path):
+              """Load safety evaluation results."""
+              try:
+                  print(f"Attempting to load: {file_path}")
+                  if not os.path.exists(file_path):
+                      print(f"File not found: {file_path}")
+                      return None
+                  
+                  with open(file_path, 'r') as f:
+                      data = json.load(f)
+                      print(f"Loaded safety results from {file_path}")
+                      return data
+              except Exception as e:
+                  print(f"Error loading {file_path}: {e}")
+                  import traceback
+                  traceback.print_exc()
+                  return None
+          
+          # Try to load both safety results
+          baseline_safety = load_safety_results('baseline-safety-results/safety-eval-output.json')
+          v2_safety = load_safety_results('v2-safety-results/safety-eval-output.json')
+          
+          print("\n" + "="*80)
+          print("🛡️ SAFETY EVALUATION COMPARISON")
+          print("="*80 + "\n")
+          
+          comparison_md = "## 🛡️ Safety Evaluation Results\n\n"
+          
+          if baseline_safety is None and v2_safety is None:
+              comparison_md += "⚠️ **Safety evaluations did not complete**\n\n"
+              comparison_md += "Check the individual safety evaluation job logs for details.\n"
+          else:
+              # Safety categories to compare
+              safety_categories = [
+                  'violence', 'sexual', 'self_harm', 'hate_unfairness'
+              ]
+              
+              comparison_md += "| Safety Category | Baseline | V2 | Status |\n"
+              comparison_md += "|----------------|----------|----|---------|\n"
+              
+              for category in safety_categories:
+                  baseline_val = None
+                  v2_val = None
+                  
+                  if baseline_safety and 'metrics' in baseline_safety:
+                      # Try different key patterns
+                      for key in baseline_safety['metrics'].keys():
+                          if category in key.lower() and 'defect_rate' in key.lower():
+                              baseline_val = baseline_safety['metrics'][key]
+                              break
+                  
+                  if v2_safety and 'metrics' in v2_safety:
+                      for key in v2_safety['metrics'].keys():
+                          if category in key.lower() and 'defect_rate' in key.lower():
+                              v2_val = v2_safety['metrics'][key]
+                              break
+                  
+                  if baseline_val is not None and v2_val is not None:
+                      baseline_pct = baseline_val * 100
+                      v2_pct = v2_val * 100
+                      
+                      # Lower defect rate is better
+                      if v2_pct < baseline_pct - 1:
+                          status = "🟢 Improved"
+                      elif v2_pct > baseline_pct + 1:
+                          status = "🔴 Regressed"
+                      else:
+                          status = "🟡 Similar"
+                      
+                      category_name = category.replace('_', ' ').title()
+                      comparison_md += f"| {category_name} | {baseline_pct:.1f}% | {v2_pct:.1f}% | {status} |\n"
+                      print(f"{category_name:<25} Baseline: {baseline_pct:.1f}%  V2: {v2_pct:.1f}%  {status}")
+                  elif baseline_val is not None:
+                      category_name = category.replace('_', ' ').title()
+                      baseline_pct = baseline_val * 100
+                      comparison_md += f"| {category_name} | {baseline_pct:.1f}% | N/A | ⚠️ Missing |\n"
+                  elif v2_val is not None:
+                      category_name = category.replace('_', ' ').title()
+                      v2_pct = v2_val * 100
+                      comparison_md += f"| {category_name} | N/A | {v2_pct:.1f}% | ⚠️ Missing |\n"
+              
+              comparison_md += "\n*Lower defect rates are better. Rates shown are percentage of responses flagged as potentially harmful.*\n"
+          
+          print("\n" + "="*80 + "\n")
+          
+          # Save comparison
+          with open('safety-comparison.md', 'w') as f:
+              f.write(comparison_md)
+          
+          print("✅ Safety comparison generated")
+          EOF
+      
+      - name: 💬 Comment Safety Results on PR
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            let safetyMd = '';
+            try {
+              safetyMd = fs.readFileSync('safety-comparison.md', 'utf8');
+            } catch (error) {
+              safetyMd = '## 🛡️ Safety Evaluation\n\n⚠️ Safety evaluation did not complete.';
+            }
+            
+            const comment = `${safetyMd}
+            
+            ### 📦 Safety Artifacts
+            - **Baseline Safety Results**: Available in workflow artifacts
+            - **V2 Safety Results**: Available in workflow artifacts
+            
+            ---
+            *Safety evaluations check for: Violence, Sexual content, Self-harm, and Hate/Unfairness*
+            `;
+            
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            const existingComment = comments.find(c => 
+              c.body.includes('🛡️ Safety Evaluation Results')
+            );
+            
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingComment.id,
+                body: comment
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: comment
+              });
+            }
+      
+      - name: 📋 Post Safety to GitHub Actions Summary
+        if: always()
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f safety-comparison.md ]; then
+            cat safety-comparison.md >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### 📦 Safety Artifacts" >> $GITHUB_STEP_SUMMARY
+            echo "- Baseline Safety Results: \`baseline-safety-results\`" >> $GITHUB_STEP_SUMMARY
+            echo "- V2 Safety Results: \`v2-safety-results\`" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ **Safety comparison not available**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Check the safety evaluation job logs for details." >> $GITHUB_STEP_SUMMARY
+          fi
+      
+      - name: ✅ Safety Evaluation Complete
+        if: always()
+        run: |
+          echo "✅ Safety evaluation workflow completed!"
+          echo ""
+          echo "ℹ️  Note: Safety evaluations provide insights but do not block PRs."
+          echo "   Review safety metrics and make an informed decision about merging."
