@@ -138,11 +138,26 @@ jobs:
           def load_metrics(file_path):
               """Load metrics from evaluation output file."""
               try:
+                  print(f"Attempting to load: {file_path}")
+                  if not os.path.exists(file_path):
+                      print(f"File not found: {file_path}")
+                      # List directory contents for debugging
+                      dir_path = os.path.dirname(file_path)
+                      if os.path.exists(dir_path):
+                          print(f"Contents of {dir_path}:")
+                          for item in os.listdir(dir_path):
+                              print(f"  - {item}")
+                      return {}
+                  
                   with open(file_path, 'r') as f:
                       data = json.load(f)
-                      return data.get('metrics', {})
+                      metrics = data.get('metrics', {})
+                      print(f"Loaded {len(metrics)} metrics from {file_path}")
+                      return metrics
               except Exception as e:
                   print(f"Error loading {file_path}: {e}")
+                  import traceback
+                  traceback.print_exc()
                   return {}
           
           def get_primary_metric(metrics_dict, base_key):
@@ -154,11 +169,19 @@ jobs:
               return None
           
           # Load both evaluation results
-          baseline_metrics = load_metrics('baseline-results/agent-eval-output.json')
-          v2_metrics = load_metrics('v2-results/agent-eval-output.json')
+          baseline_metrics = load_metrics('baseline-results/eval-output.json')
+          v2_metrics = load_metrics('v2-results/eval-output.json')
           
           if not baseline_metrics or not v2_metrics:
               print("⚠️ Could not load metrics from both agents")
+              print(f"Baseline metrics loaded: {len(baseline_metrics)} keys")
+              print(f"V2 metrics loaded: {len(v2_metrics)} keys")
+              
+              # Create a minimal comparison file so the workflow doesn't fail
+              with open('comparison.md', 'w') as f:
+                  f.write("## 📊 Comprehensive Evaluation Results\n\n")
+                  f.write("⚠️ **Comparison not available** - Could not load metrics from evaluation outputs.\n\n")
+                  f.write("Please check the individual job logs for details.\n")
               exit(0)
           
           # Define metric categories
@@ -439,6 +462,9 @@ jobs:
       - name: 📋 Post to GitHub Actions Summary
         if: always()
         run: |
+          echo "## 🤖 Unified Agent Evaluation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
           if [ -f comparison.md ]; then
             cat comparison.md >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
@@ -446,8 +472,20 @@ jobs:
             if [ -f all-metrics.md ]; then
               cat all-metrics.md >> $GITHUB_STEP_SUMMARY
             fi
+            
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### 📦 Artifacts" >> $GITHUB_STEP_SUMMARY
+            echo "- Baseline Results: \`baseline-results\`" >> $GITHUB_STEP_SUMMARY
+            echo "- V2 Results: \`v2-results\`" >> $GITHUB_STEP_SUMMARY
           else
-            echo "⚠️ Comparison not available" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ **Comparison not available**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The comparison step did not generate results. Check the logs above for details." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Troubleshooting" >> $GITHUB_STEP_SUMMARY
+            echo "1. Check if both evaluation jobs completed successfully" >> $GITHUB_STEP_SUMMARY
+            echo "2. Verify artifacts were uploaded correctly" >> $GITHUB_STEP_SUMMARY
+            echo "3. Review the 'Compare and Generate Report' step logs" >> $GITHUB_STEP_SUMMARY
           fi
       
       - name: ✅ Evaluation Complete
