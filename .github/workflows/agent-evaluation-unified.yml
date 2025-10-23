@@ -990,10 +990,10 @@ jobs:
           AZURE_AI_PROJECT_ENDPOINT: ${{ vars.AZURE_AI_PROJECT_ENDPOINT }}
           AZURE_DEPLOYMENT_NAME: ${{ vars.AZURE_DEPLOYMENT_NAME }}
           AGENT_ID_BASELINE: ${{ vars.AGENT_ID_BASELINE }}
-          RED_TEAM_MAX_SCENARIOS: 3
+          RED_TEAM_MAX_SCENARIOS: 10
         run: |
           echo "🔴 Running red team evaluation on Baseline Agent..."
-          echo "Note: Limited to 3 scenarios for CI/CD speed"
+          echo "Note: Testing with 10+ attack strategies for comprehensive coverage"
           python scripts/local_redteam_eval.py
       
       - name: 📤 Upload Red Team Results
@@ -1037,10 +1037,10 @@ jobs:
           AZURE_AI_PROJECT_ENDPOINT: ${{ vars.AZURE_AI_PROJECT_ENDPOINT }}
           AZURE_DEPLOYMENT_NAME: ${{ vars.AZURE_DEPLOYMENT_NAME }}
           AGENT_ID_BASELINE: ${{ vars.AGENT_ID_V2 }}
-          RED_TEAM_MAX_SCENARIOS: 3
+          RED_TEAM_MAX_SCENARIOS: 10
         run: |
           echo "🔴 Running red team evaluation on V2 Agent..."
-          echo "Note: Limited to 3 scenarios for CI/CD speed"
+          echo "Note: Testing with 10+ attack strategies for comprehensive coverage"
           python scripts/local_redteam_eval.py
       
       - name: 📤 Upload Red Team Results
@@ -1105,6 +1105,25 @@ jobs:
           baseline_redteam = load_redteam_results('baseline-redteam-results/redteam-summary.json')
           v2_redteam = load_redteam_results('v2-redteam-results/redteam-summary.json')
           
+          # Also load conversation details for attack breakdown
+          def load_conversations(file_path):
+              """Load conversation details to extract attack strategies."""
+              try:
+                  if not os.path.exists(file_path):
+                      return []
+                  conversations = []
+                  with open(file_path, 'r', encoding='utf-8') as f:
+                      for line in f:
+                          if line.strip():
+                              conversations.append(json.loads(line))
+                  return conversations
+              except Exception as e:
+                  print(f"Could not load conversations from {file_path}: {e}")
+                  return []
+          
+          baseline_conversations = load_conversations('baseline-redteam-results/redteam-conversations.jsonl')
+          v2_conversations = load_conversations('v2-redteam-results/redteam-conversations.jsonl')
+          
           print("\n" + "="*80)
           print("🔴 RED TEAM EVALUATION COMPARISON")
           print("="*80 + "\n")
@@ -1115,7 +1134,7 @@ jobs:
               comparison_md += "⚠️ **Red team evaluations did not complete**\n\n"
               comparison_md += "Check the individual red team evaluation job logs for details.\n"
           else:
-              comparison_md += "*Red team testing uses 65+ attack strategies including ROT13, Leetspeak, Base64, Unicode attacks, and more.*\n\n"
+              comparison_md += "*Red team testing uses 10+ attack strategies including ROT13, Leetspeak, Base64, Unicode attacks, and more.*\n\n"
               
               # Overall metrics
               comparison_md += "### 📊 Overall Attack Success Rate\n\n"
@@ -1142,6 +1161,58 @@ jobs:
                   
                   print(f"Attack Success Rate - Baseline: {baseline_asr:.1f}%  V2: {v2_asr:.1f}%  {status}")
                   print(f"Total Attacks - Baseline: {baseline_attacks}  V2: {v2_attacks}")
+                  
+                  # Attack Strategy Breakdown
+                  comparison_md += "\n### 🎯 Attack Strategy Breakdown\n\n"
+                  
+                  if baseline_conversations or v2_conversations:
+                      # Extract attack strategies from metadata
+                      def extract_attack_strategies(conversations):
+                          """Extract attack strategy counts from conversations."""
+                          strategy_counts = {}
+                          for conv in conversations:
+                              metadata = conv.get('metadata', {})
+                              attack_strategy = metadata.get('attack_strategy', 'Unknown')
+                              risk_category = metadata.get('risk_category', 'Unknown')
+                              
+                              key = f"{risk_category}_{attack_strategy}"
+                              strategy_counts[key] = strategy_counts.get(key, 0) + 1
+                          return strategy_counts
+                      
+                      baseline_strategies = extract_attack_strategies(baseline_conversations)
+                      v2_strategies = extract_attack_strategies(v2_conversations)
+                      
+                      # Get all unique strategies
+                      all_strategies = set(list(baseline_strategies.keys()) + list(v2_strategies.keys()))
+                      
+                      if all_strategies:
+                          comparison_md += "| Risk Category | Attack Strategy | Baseline Count | V2 Count |\n"
+                          comparison_md += "|---------------|-----------------|----------------|----------|\n"
+                          
+                          print("\nAttack Strategy Breakdown:")
+                          
+                          for strategy_key in sorted(all_strategies):
+                              # Parse the key
+                              parts = strategy_key.split('_', 1)
+                              if len(parts) == 2:
+                                  risk_cat, attack_strat = parts
+                                  risk_cat_display = risk_cat.replace('_', ' ').title()
+                                  attack_strat_display = attack_strat.replace('_', ' ').title()
+                              else:
+                                  risk_cat_display = "Unknown"
+                                  attack_strat_display = strategy_key.replace('_', ' ').title()
+                              
+                              baseline_count = baseline_strategies.get(strategy_key, 0)
+                              v2_count = v2_strategies.get(strategy_key, 0)
+                              
+                              comparison_md += f"| {risk_cat_display} | {attack_strat_display} | {baseline_count} | {v2_count} |\n"
+                              print(f"{risk_cat_display:<20} {attack_strat_display:<30} Baseline: {baseline_count:>3}  V2: {v2_count:>3}")
+                          
+                          comparison_md += "\n"
+                      else:
+                          comparison_md += "*Attack strategy details not available in conversation metadata.*\n\n"
+                  else:
+                      comparison_md += "*Conversation files not found. Attack strategy breakdown unavailable.*\n\n"
                   
                   # Safety vulnerabilities by category
                   comparison_md += "\n### 🛡️ Safety Defect Rates by Category\n\n"
