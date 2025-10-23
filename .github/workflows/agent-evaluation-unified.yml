@@ -281,7 +281,11 @@ jobs:
               baseline_val = get_primary_metric(baseline_metrics, metric)
               v2_val = get_primary_metric(v2_metrics, metric)
               
-              if baseline_val is not None and v2_val is not None:
+              # Check if values are numeric (handle "not applicable" case)
+              baseline_is_numeric = baseline_val is not None and isinstance(baseline_val, (int, float))
+              v2_is_numeric = v2_val is not None and isinstance(v2_val, (int, float))
+              
+              if baseline_is_numeric and v2_is_numeric:
                   diff = v2_val - baseline_val
                   
                   if abs(diff) < 0.05:
@@ -297,6 +301,13 @@ jobs:
                   metric_name = metric.replace('_', ' ').title()
                   comparison_md += f"| {metric_name} | {baseline_val:.2f} | {v2_val:.2f} | {diff:+.2f} | {status} |\n"
                   print(f"{metric_name:<25} Baseline: {baseline_val:.2f}  V2: {v2_val:.2f}  Change: {diff:+.2f}  {status}")
+              else:
+                  # Handle non-numeric values (e.g., "not applicable")
+                  metric_name = metric.replace('_', ' ').title()
+                  baseline_display = str(baseline_val) if baseline_val is not None else "N/A"
+                  v2_display = str(v2_val) if v2_val is not None else "N/A"
+                  comparison_md += f"| {metric_name} | {baseline_display} | {v2_display} | - | - |\n"
+                  print(f"{metric_name:<25} Baseline: {baseline_display}  V2: {v2_display}")
           
           print()
           
