@@ -1,15 +1,15 @@
 {
-  "relevance": 4.7,
-  "coherence": 4.0,
+  "relevance": 4.9,
+  "coherence": 4.3,
   "fluency": 4.0,
   "groundedness": 1.0,
   "tool_call_accuracy": 0,
   "intent_resolution": 5.0,
   "task_adherence": 5.0,
-  "similarity": 2.8,
-  "client_run_duration": 2.369572520256042,
-  "completion_tokens": 98.7,
+  "similarity": 3.2,
+  "client_run_duration": 2.687437582015991,
+  "completion_tokens": 97.8,
   "prompt_tokens": 1060.1,
-  "updated_at": "2025-10-22T21:10:53.317236",
-  "commit_sha": "3bb6b6a9e29c477238da0017dba90c4ccfbca352"
+  "updated_at": "2025-10-23T14:53:38.776387",
+  "commit_sha": "d1af79396b43ea31ce1a1445bb1b2f1984ebe9d8"
 }
