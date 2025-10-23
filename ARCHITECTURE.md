@@ -1,10 +1,29 @@
-# CI/CD Pipeline Architecture
+# Dual-Agent Evaluation Architecture
+
+## Overview
+
+This architecture implements **automated dual-agent evaluation** for AI agent quality assurance. On every pull request, the system evaluates both a baseline agent and a V2 agent, compares their performance across multiple quality metrics, and presents the results for manual review.
+
+### Key Principles
+
+1. **Always Pass** - Workflow never fails automatically; developers decide based on metrics
+2. **Dual Evaluation** - Both baseline and V2 agents evaluated independently
+3. **Clear Indicators** - 🟢 improvements, 🔴 regressions, 🟡 neutral changes
+4. **Full Transparency** - All results available in PR comments, Actions summary, and artifacts
+5. **Secure by Default** - Uses Azure federated credentials (OIDC), no secrets in code
+
+### Agents
+
+| Agent | Description | Variable |
+|-------|-------------|----------|
+| **Baseline** | Current production or reference agent | `AGENT_ID_BASELINE` |
+| **V2** | New or experimental agent being tested | `AGENT_ID_V2` |
 
 ## High-Level Flow Diagram
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                          DEVELOPER WORKFLOW                          │
+│                    DUAL-AGENT EVALUATION WORKFLOW                    │
 └─────────────────────────────────────────────────────────────────────┘
 
     Developer                 GitHub                    Azure AI
@@ -17,43 +36,40 @@
         │                        │                          │
         │                        │  3. Checkout code        │
         │                        │                          │
-        │                        │  4. Check for baseline   │
-        │                        │     (on main branch)     │
+        │                        │  4. Authenticate Azure   │
+        │                        │     (OIDC/Federated)     │
         │                        │                          │
-        │                        │                          │
-        │                        │  5. Run evaluation       │
+        │                        │  5. Evaluate Baseline    │
         │                        ├─────────────────────────>│
-        │                        │                          │
-        │                        │                          │  6. Execute agent
+        │                        │     (AGENT_ID_BASELINE)  │
+        │                        │                          │  6. Execute baseline
         │                        │                          │     with test queries
-        │                        │                          │
-        │                        │  7. Return results       │
+        │                        │  7. Baseline results     │
         │                        │<─────────────────────────┤
         │                        │                          │
-        │                        │  8. Compare with         │
-        │                        │     baseline             │
-        │                        │                          │
-        │                        │  9. Generate PR comment  │
-        │                        │                          │
-        │  10. View results      │                          │
-        │<───────────────────────┤                          │
-        │     (PR comment)       │                          │
-        │                        │                          │
-        │  11. Quality gate      │                          │
-        │      ✅ PASS / ❌ FAIL │                          │
-        │                        │                          │
-        │  12. Merge PR          │                          │
-        │     (if approved)      │                          │
-        ├───────────────────────>│                          │
-        │                        │                          │
-        │                        │  13. Trigger baseline    │
-        │                        │      update workflow     │
-        │                        │                          │
-        │                        │  14. Run eval on main    │
+        │                        │  8. Evaluate V2 Agent    │
         │                        ├─────────────────────────>│
+        │                        │     (AGENT_ID_V2)        │
+        │                        │                          │  9. Execute V2
+        │                        │                          │     with test queries
+        │                        │  10. V2 results          │
+        │                        │<─────────────────────────┤
         │                        │                          │
-        │                        │  15. Save new baseline   │
-        │                        │      to repository       │
+        │                        │  11. Compare metrics     │
+        │                        │      (baseline vs V2)    │
+        │                        │                          │
+        │                        │  12. Generate outputs:   │
+        │                        │      • PR comment        │
+        │                        │      • Actions summary   │
+        │                        │      • Artifacts         │
+        │                        │                          │
+        │  13. View results      │                          │
+        │<───────────────────────┤                          │
+        │     (Always ✅ PASS)   │                          │
+        │                        │                          │
+        │  14. Review & Merge    │                          │
+        │     (Manual decision)  │                          │
+        ├───────────────────────>│                          │
         │                        │                          │
         ▼                        ▼                          ▼
 
@@ -82,48 +98,51 @@
 
 
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    QUALITY GATE DECISION TREE                        │
+│                     COMPARISON & DECISION FLOW                       │
 └─────────────────────────────────────────────────────────────────────┘
 
-                    Run Evaluation
-                          │
-                          ▼
-                 Calculate Metrics
-                          │
-                          ▼
-              ┌──────────────────────┐
-              │ Compare with Baseline│
-              └──────────┬───────────┘
-                         │
-                         ├─────────────────┬─────────────────┐
-                         ▼                 ▼                 ▼
-                   🟢 Improved        🟡 Stable        🔴 Degraded
-                   (> +5%)            (±5%)            (> -5%)
-                         │                 │                 │
-                         └────────┬────────┴─────────────────┘
-                                  ▼
-                        ┌──────────────────┐
-                        │ Quality Metrics: │
-                        │ • Relevance      │
-                        │ • Coherence      │
-                        │ • Fluency        │
-                        │ • Groundedness   │
-                        │ • Tool Accuracy  │
-                        │ • Intent Res.    │
-                        │ • Task Adherence │
-                        └────────┬─────────┘
-                                 │
-                ┌────────────────┴────────────────┐
-                ▼                                 ▼
-        ✅ ALL metrics                    ❌ ANY metric
-        within threshold                  degraded >5%
-                │                                 │
-                ▼                                 ▼
-        Quality Gate PASS              Quality Gate FAIL
-                │                                 │
-                ▼                                 ▼
-        PR can be merged              Workflow exits with error
-        (after review)                PR blocked
+            Evaluate Baseline Agent
+                      │
+                      ▼
+            Evaluate V2 Agent
+                      │
+                      ▼
+            ┌──────────────────────┐
+            │ Compare Metrics      │
+            │ (Baseline vs V2)     │
+            └──────────┬───────────┘
+                       │
+                       ├─────────────────┬─────────────────┐
+                       ▼                 ▼                 ▼
+                 🟢 Improved        🟡 Neutral       🔴 Regressed
+                 (V2 > Baseline)    (Similar)        (V2 < Baseline)
+                       │                 │                 │
+                       └────────┬────────┴─────────────────┘
+                                ▼
+                      ┌──────────────────┐
+                      │ Quality Metrics: │
+                      │ • Relevance      │
+                      │ • Coherence      │
+                      │ • Fluency        │
+                      │ • Groundedness   │
+                      │ • Tool Call Acc. │
+                      └────────┬─────────┘
+                               │
+                               ▼
+                      ┌──────────────────┐
+                      │ Generate Outputs │
+                      │ • PR comment     │
+                      │ • Actions summary│
+                      │ • Artifacts      │
+                      └────────┬─────────┘
+                               │
+                               ▼
+                      ✅ Workflow PASSES
+                      (Always succeeds)
+                               │
+                               ▼
+                      Manual merge decision
+                      (Developer reviews metrics)
 
 
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -133,20 +152,20 @@
 Repository Root
 │
 ├── .github/workflows/
-│   ├── agent-eval-on-pr.yml ──┐
-│   │   │                       │
-│   │   ├─> Triggers on PR      │
-│   │   ├─> Fetches baseline ───┼─> evaluation_results/baseline/
-│   │   ├─> Runs evaluation     │       baseline_metrics.json
-│   │   ├─> Compares metrics    │       (committed to repo)
-│   │   ├─> Posts PR comment    │
-│   │   └─> Quality gate check  │
-│   │                            │
-│   └── update-baseline.yml ────┤
-│       │                        │
-│       ├─> Triggers on merge   │
-│       ├─> Runs evaluation     │
-│       └─> Updates baseline ───┘
+│   ├── agent-eval-on-pr.yml ──────┐  🤖 ACTIVE (Dual-agent evaluation)
+│   │   │                           │
+│   │   ├─> Triggers on PR          │
+│   │   ├─> Evaluates baseline ─────┼─> evaluation_results/baseline/
+│   │   ├─> Evaluates V2 agent ─────┼─> evaluation_results/v2/
+│   │   ├─> Compares metrics        │
+│   │   ├─> Posts PR comment        │
+│   │   ├─> GitHub Actions summary  │
+│   │   ├─> Uploads artifacts       │
+│   │   └─> Always passes ✅        │
+│   │                                │
+│   └── agent-eval-on-pr-official.yml  ❌ DISABLED (Microsoft action)
+│       │
+│       └─> Manual dispatch only
 │
 ├── scripts/
 │   ├── local_agent_eval.py
@@ -161,14 +180,13 @@ Repository Root
 │
 ├── evaluation_results/
 │   ├── baseline/
-│   │   ├── baseline_metrics.json      ✅ Committed
-│   │   └── baseline_full_results.json ✅ Committed
+│   │   └── baseline_results.json       📦 Workflow artifacts
 │   │
-│   ├── pr_runs/                        ❌ Not committed
-│   │   └── pr-{N}-{timestamp}/         (uploaded as artifacts)
+│   ├── v2/
+│   │   └── v2_results.json             📦 Workflow artifacts
 │   │
 │   └── agent_eval_output/              ❌ Not committed
-│       └── evaluation_results.json     (local runs only)
+│       └── eval-output.json            (local runs only)
 │
 └── .env
     └─> Local development only
@@ -215,21 +233,28 @@ Results          <──> Baseline Metrics  ────────────
 
 For each metric:
 
-    current_value = 4.85
-    baseline_value = 4.75
+    baseline_value = 4.20  (from baseline agent)
+    v2_value = 4.50        (from V2 agent)
     
-    diff = current - baseline
-         = 4.85 - 4.75
-         = +0.10
+    diff = v2_value - baseline_value
+         = 4.50 - 4.20
+         = +0.30
     
-    diff_pct = (diff / baseline) × 100
-             = (0.10 / 4.75) × 100
-             = +2.1%
+    # Determine status indicator
+    if abs(diff) < 0.1:     # Less than 0.1 difference
+        status = 🟡           # Neutral (no significant change)
+    elif diff > 0:           # Positive difference
+        status = 🟢           # Improvement
+    else:                    # Negative difference
+        status = 🔴           # Regression
     
-    if diff_pct < -5%:     # Degraded more than 5%
-        ❌ FAIL
-        emoji = 🔴
-    elif diff_pct > +5%:   # Improved more than 5%
+    # Calculate percentage change (for display)
+    if baseline_value > 0:
+        pct_change = (diff / baseline_value) × 100
+                   = (0.30 / 4.20) × 100
+                   = +7.1%
+    
+    # Note: Workflow always passes regardless of status
         ✅ PASS
         emoji = 🟢
     else:                  # Within ±5%
