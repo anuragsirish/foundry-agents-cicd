@@ -1,13 +1,14 @@
-name: 🛡️ Agent Safety Evaluation on PR
+name: 🛡️ Agent Safety Evaluation on PR (DISABLED - Merged into agent-evaluation-unified.yml)
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
-    paths:
-      - 'agent-setup/**'
-      - 'data/**'
-      - 'scripts/**'
-      - '.github/workflows/agent-safety-eval-on-pr.yml'
+  workflow_dispatch:
+  # pull_request:
+  #   types: [opened, synchronize, reopened]
+  #   paths:
+  #     - 'agent-setup/**'
+  #     - 'data/**'
+  #     - 'scripts/**'
+  #     - '.github/workflows/agent-safety-eval-on-pr.yml'
 
 permissions:
   id-token: write

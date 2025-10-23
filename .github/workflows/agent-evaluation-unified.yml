@@ -1,0 +1,459 @@
+name: 🤖 Unified Agent Evaluation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'agent-setup/**'
+      - 'data/**'
+      - 'scripts/**'
+      - '.github/workflows/agent-evaluation-unified.yml'
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  evaluate-baseline:
+    name: 🎯 Baseline Agent
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 🤖 Checkout Repository
+        uses: actions/checkout@v4
+      
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: 📦 Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: 🔐 Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      
+      - name: 🎯 Evaluate Baseline Agent
+        env:
+          AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          AZURE_AI_PROJECT_ENDPOINT: ${{ vars.AZURE_AI_PROJECT_ENDPOINT }}
+          AZURE_DEPLOYMENT_NAME: ${{ vars.AZURE_DEPLOYMENT_NAME }}
+          AGENT_ID_BASELINE: ${{ vars.AGENT_ID_BASELINE }}
+        run: |
+          echo "🎯 Evaluating Baseline Agent..."
+          python scripts/local_agent_eval.py
+      
+      - name: 📤 Upload Baseline Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: baseline-results
+          path: evaluation_results/agent_eval_output/
+          retention-days: 30
+
+  evaluate-v2:
+    name: 🚀 V2 Agent
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 🤖 Checkout Repository
+        uses: actions/checkout@v4
+      
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: 📦 Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: 🔐 Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      
+      - name: 🚀 Evaluate V2 Agent
+        env:
+          AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          AZURE_AI_PROJECT_ENDPOINT: ${{ vars.AZURE_AI_PROJECT_ENDPOINT }}
+          AZURE_DEPLOYMENT_NAME: ${{ vars.AZURE_DEPLOYMENT_NAME }}
+          AGENT_ID_BASELINE: ${{ vars.AGENT_ID_V2 }}
+        run: |
+          echo "🚀 Evaluating V2 Agent..."
+          python scripts/local_agent_eval.py
+      
+      - name: 📤 Upload V2 Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-results
+          path: evaluation_results/agent_eval_output/
+          retention-days: 30
+
+  compare-and-report:
+    name: 📊 Compare & Report
+    needs: [evaluate-baseline, evaluate-v2]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: 🤖 Checkout Repository
+        uses: actions/checkout@v4
+      
+      - name: 📥 Download Baseline Results
+        uses: actions/download-artifact@v4
+        with:
+          name: baseline-results
+          path: baseline-results
+      
+      - name: 📥 Download V2 Results
+        uses: actions/download-artifact@v4
+        with:
+          name: v2-results
+          path: v2-results
+      
+      - name: 📊 Compare and Generate Report
+        id: compare
+        run: |
+          python - <<'EOF'
+          import json
+          import os
+          from pathlib import Path
+          
+          def load_metrics(file_path):
+              """Load metrics from evaluation output file."""
+              try:
+                  with open(file_path, 'r') as f:
+                      data = json.load(f)
+                      return data.get('metrics', {})
+              except Exception as e:
+                  print(f"Error loading {file_path}: {e}")
+                  return {}
+          
+          def get_primary_metric(metrics_dict, base_key):
+              """Get the primary metric value (without prefixes like gpt_)."""
+              # Try keys in order of preference
+              for key in [base_key, f'gpt_{base_key}', f'{base_key}.{base_key}']:
+                  if key in metrics_dict:
+                      return metrics_dict[key]
+              return None
+          
+          # Load both evaluation results
+          baseline_metrics = load_metrics('baseline-results/agent-eval-output.json')
+          v2_metrics = load_metrics('v2-results/agent-eval-output.json')
+          
+          if not baseline_metrics or not v2_metrics:
+              print("⚠️ Could not load metrics from both agents")
+              exit(0)
+          
+          # Define metric categories
+          quality_metrics = [
+              'relevance', 'coherence', 'fluency', 'groundedness', 
+              'similarity', 'intent_resolution', 'task_adherence'
+          ]
+          
+          tool_metrics = ['tool_call_accuracy']
+          
+          operational_metrics = [
+              'client-run-duration-in-seconds',
+              'completion-tokens',
+              'prompt-tokens',
+              'server-run-duration-in-seconds'
+          ]
+          
+          # Generate comprehensive comparison
+          print("\n" + "="*100)
+          print("📊 COMPREHENSIVE AGENT EVALUATION COMPARISON")
+          print("="*100 + "\n")
+          
+          comparison_md = "## 📊 Comprehensive Evaluation Results\n\n"
+          
+          # Quality Metrics Section
+          comparison_md += "### 🎯 Quality Metrics (1-5 scale)\n\n"
+          comparison_md += "| Metric | Baseline | V2 | Change | Status |\n"
+          comparison_md += "|--------|----------|----|---------|---------|\n"
+          
+          improvements = 0
+          regressions = 0
+          neutral = 0
+          
+          print("### 🎯 Quality Metrics")
+          print()
+          
+          for metric in quality_metrics:
+              baseline_val = get_primary_metric(baseline_metrics, metric)
+              v2_val = get_primary_metric(v2_metrics, metric)
+              
+              if baseline_val is not None and v2_val is not None:
+                  diff = v2_val - baseline_val
+                  
+                  if abs(diff) < 0.1:
+                      status = "🟡"
+                      neutral += 1
+                  elif diff > 0:
+                      status = "🟢"
+                      improvements += 1
+                  else:
+                      status = "🔴"
+                      regressions += 1
+                  
+                  metric_name = metric.replace('_', ' ').title()
+                  comparison_md += f"| {metric_name} | {baseline_val:.2f} | {v2_val:.2f} | {diff:+.2f} | {status} |\n"
+                  print(f"{metric_name:<25} Baseline: {baseline_val:.2f}  V2: {v2_val:.2f}  Change: {diff:+.2f}  {status}")
+          
+          print()
+          
+          # Tool Call Accuracy Section
+          comparison_md += "\n### 🛠️ Tool Call Accuracy\n\n"
+          comparison_md += "| Metric | Baseline | V2 | Change | Status |\n"
+          comparison_md += "|--------|----------|----|---------|---------|\n"
+          
+          print("### 🛠️ Tool Call Accuracy")
+          print()
+          
+          for metric in tool_metrics:
+              baseline_val = get_primary_metric(baseline_metrics, metric)
+              v2_val = get_primary_metric(v2_metrics, metric)
+              
+              if baseline_val is not None and v2_val is not None:
+                  diff = v2_val - baseline_val
+                  
+                  if abs(diff) < 0.05:
+                      status = "🟡"
+                      neutral += 1
+                  elif diff > 0:
+                      status = "🟢"
+                      improvements += 1
+                  else:
+                      status = "🔴"
+                      regressions += 1
+                  
+                  metric_name = metric.replace('_', ' ').title()
+                  comparison_md += f"| {metric_name} | {baseline_val:.2f} | {v2_val:.2f} | {diff:+.2f} | {status} |\n"
+                  print(f"{metric_name:<25} Baseline: {baseline_val:.2f}  V2: {v2_val:.2f}  Change: {diff:+.2f}  {status}")
+          
+          print()
+          
+          # Operational Metrics Section
+          comparison_md += "\n### ⚡ Operational Metrics\n\n"
+          comparison_md += "| Metric | Baseline | V2 | Change | Status |\n"
+          comparison_md += "|--------|----------|----|---------|---------|\n"
+          
+          print("### ⚡ Operational Metrics")
+          print()
+          
+          for metric in operational_metrics:
+              full_key = f'operational_metrics.{metric}'
+              baseline_val = baseline_metrics.get(full_key)
+              v2_val = v2_metrics.get(full_key)
+              
+              if baseline_val is not None and v2_val is not None:
+                  diff = v2_val - baseline_val
+                  
+                  # For duration and tokens, lower is better
+                  if 'duration' in metric or 'tokens' in metric:
+                      if abs(diff) < (baseline_val * 0.1):  # Less than 10% change
+                          status = "🟡"
+                      elif diff < 0:  # Decrease is good
+                          status = "🟢"
+                      else:  # Increase is bad
+                          status = "🔴"
+                  else:
+                      status = "🟡"
+                  
+                  metric_name = metric.replace('-', ' ').title()
+                  
+                  # Format based on metric type
+                  if 'duration' in metric:
+                      comparison_md += f"| {metric_name} | {baseline_val:.2f}s | {v2_val:.2f}s | {diff:+.2f}s | {status} |\n"
+                      print(f"{metric_name:<35} Baseline: {baseline_val:.2f}s  V2: {v2_val:.2f}s  Change: {diff:+.2f}s  {status}")
+                  elif 'tokens' in metric:
+                      comparison_md += f"| {metric_name} | {baseline_val:.0f} | {v2_val:.0f} | {diff:+.0f} | {status} |\n"
+                      print(f"{metric_name:<35} Baseline: {baseline_val:.0f}  V2: {v2_val:.0f}  Change: {diff:+.0f}  {status}")
+                  else:
+                      comparison_md += f"| {metric_name} | {baseline_val:.2f} | {v2_val:.2f} | {diff:+.2f} | {status} |\n"
+                      print(f"{metric_name:<35} Baseline: {baseline_val:.2f}  V2: {v2_val:.2f}  Change: {diff:+.2f}  {status}")
+          
+          print()
+          
+          # Binary Aggregates Section (Threshold-based metrics)
+          comparison_md += "\n### ✅ Threshold Performance (Pass Rate)\n\n"
+          comparison_md += "| Metric | Baseline | V2 | Status |\n"
+          comparison_md += "|--------|----------|----|---------|\n"
+          
+          print("### ✅ Threshold Performance")
+          print()
+          
+          binary_metrics = [k for k in baseline_metrics.keys() if k.endswith('.binary_aggregate')]
+          
+          for metric_key in sorted(binary_metrics):
+              baseline_val = baseline_metrics.get(metric_key)
+              v2_val = v2_metrics.get(metric_key)
+              
+              if baseline_val is not None and v2_val is not None:
+                  metric_name = metric_key.replace('.binary_aggregate', '').replace('_', ' ').title()
+                  
+                  baseline_pct = baseline_val * 100
+                  v2_pct = v2_val * 100
+                  diff = v2_val - baseline_val
+                  
+                  if abs(diff) < 0.01:
+                      status = "🟡"
+                  elif diff > 0:
+                      status = "🟢"
+                  else:
+                      status = "🔴"
+                  
+                  comparison_md += f"| {metric_name} | {baseline_pct:.0f}% | {v2_pct:.0f}% | {status} |\n"
+                  print(f"{metric_name:<30} Baseline: {baseline_pct:.0f}%  V2: {v2_pct:.0f}%  {status}")
+          
+          print()
+          
+          # Summary Section
+          comparison_md += "\n### 📈 Summary\n\n"
+          comparison_md += f"- 🟢 **Improvements**: {improvements}\n"
+          comparison_md += f"- 🔴 **Regressions**: {regressions}\n"
+          comparison_md += f"- 🟡 **Neutral**: {neutral}\n\n"
+          
+          if regressions == 0:
+              comparison_md += "✅ **No regressions detected** - V2 agent maintains or improves quality!\n"
+          elif improvements > regressions:
+              comparison_md += f"⚠️ **Mixed results** - {improvements} improvements vs {regressions} regressions. Review details before merging.\n"
+          else:
+              comparison_md += f"⚠️ **Quality concerns** - {regressions} regressions detected. Consider investigating before merging.\n"
+          
+          print("="*100)
+          print(f"📈 Summary: {improvements} improvements, {regressions} regressions, {neutral} neutral")
+          print("="*100)
+          print()
+          
+          # Save comparison for PR comment
+          with open('comparison.md', 'w') as f:
+              f.write(comparison_md)
+          
+          # Save all metrics for detailed view
+          all_metrics_md = "\n### 📋 All Baseline Metrics\n\n"
+          all_metrics_md += "<details><summary>Click to expand</summary>\n\n"
+          all_metrics_md += "| Metric | Value |\n"
+          all_metrics_md += "|--------|-------|\n"
+          
+          for key in sorted(baseline_metrics.keys()):
+              val = baseline_metrics[key]
+              if isinstance(val, (int, float)):
+                  all_metrics_md += f"| `{key}` | {val:.4f} |\n"
+          
+          all_metrics_md += "\n</details>\n\n"
+          
+          all_metrics_md += "### 📋 All V2 Metrics\n\n"
+          all_metrics_md += "<details><summary>Click to expand</summary>\n\n"
+          all_metrics_md += "| Metric | Value |\n"
+          all_metrics_md += "|--------|-------|\n"
+          
+          for key in sorted(v2_metrics.keys()):
+              val = v2_metrics[key]
+              if isinstance(val, (int, float)):
+                  all_metrics_md += f"| `{key}` | {val:.4f} |\n"
+          
+          all_metrics_md += "\n</details>\n"
+          
+          with open('all-metrics.md', 'w') as f:
+              f.write(all_metrics_md)
+          
+          print("✅ Comparison generated successfully!")
+          EOF
+      
+      - name: 💬 Comment on PR
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            let comparisonMd = '';
+            let allMetricsMd = '';
+            
+            try {
+              comparisonMd = fs.readFileSync('comparison.md', 'utf8');
+            } catch (error) {
+              comparisonMd = '## 📊 Evaluation Results\n\n⚠️ Comparison could not be generated.';
+            }
+            
+            try {
+              allMetricsMd = fs.readFileSync('all-metrics.md', 'utf8');
+            } catch (error) {
+              allMetricsMd = '';
+            }
+            
+            const artifactsSection = `
+            ### 📦 Artifacts
+            - **Baseline Results**: Download from workflow artifacts
+            - **V2 Results**: Download from workflow artifacts
+            
+            ---
+            *Legend: 🟢 Improved | 🔴 Regressed | 🟡 Neutral*
+            `;
+            
+            const comment = comparisonMd + '\n\n' + allMetricsMd + '\n\n' + artifactsSection;
+            
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            const existingComment = comments.find(c => 
+              c.body.includes('📊 Comprehensive Evaluation Results')
+            );
+            
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingComment.id,
+                body: comment
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: comment
+              });
+            }
+      
+      - name: 📋 Post to GitHub Actions Summary
+        if: always()
+        run: |
+          if [ -f comparison.md ]; then
+            cat comparison.md >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            if [ -f all-metrics.md ]; then
+              cat all-metrics.md >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "⚠️ Comparison not available" >> $GITHUB_STEP_SUMMARY
+          fi
+      
+      - name: ✅ Evaluation Complete
+        if: always()
+        run: |
+          echo "✅ Unified evaluation workflow completed!"
+          echo ""
+          echo "ℹ️  Note: This workflow provides comprehensive metrics but does not block PRs."
+          echo "   Review all metrics and make an informed decision about merging."
