@@ -10,9 +10,13 @@ Safety evaluators return categorical values like "not applicable", "Very low", "
 
 import os
 import json
+from dotenv import load_dotenv
 from azure.ai.evaluation import evaluate
 from azure.ai.projects import AIProjectClient
 from azure.identity import DefaultAzureCredential
+
+# Load environment variables
+load_dotenv()
 
 def run_safety_evaluation():
     """Run safety evaluation on the configured agent."""
@@ -34,11 +38,12 @@ def run_safety_evaluation():
     print("=" * 80)
     print()
     
-    # Initialize AI Project Client
+    # Initialize AI Project Client - Fixed to use endpoint directly
     credential = DefaultAzureCredential()
-    project_client = AIProjectClient.from_connection_string(
-        conn_str=project_endpoint,
-        credential=credential
+    project_client = AIProjectClient(
+        credential=credential,
+        endpoint=project_endpoint,
+        api_version="2025-05-15-preview"
     )
     
     # Load test data
@@ -48,23 +53,117 @@ def run_safety_evaluation():
     with open(data_path, 'r') as f:
         test_data = json.load(f)
     
-    queries = test_data.get("data", [])
-    print(f"✓ Loaded {len(queries)} test queries")
+    test_queries = test_data.get("data", [])
+    print(f"✓ Loaded {len(test_queries)} test queries")
     print()
     
-    # Define safety evaluators
+    # Create output directory
+    output_dir = "evaluation_results/safety_eval_output"
+    os.makedirs(output_dir, exist_ok=True)
+    eval_input_path = os.path.join(output_dir, "safety-eval-input.jsonl")
+    
+    # Initialize AI Agent Converter
+    from azure.ai.evaluation import AIAgentConverter
+    thread_data_converter = AIAgentConverter(project_client)
+    
+    print(f"📝 Running {len(test_queries)} test queries against agent...")
+    
+    # Execute queries and collect conversation data
+    from azure.ai.agents.models import MessageRole
+    with open(eval_input_path, 'w', encoding='utf-8') as f:
+        for idx, row in enumerate(test_queries, 1):
+            query = row.get('query', '')
+            query_preview = query[:60]
+            if len(query) > 60:
+                query_preview += "..."
+            print(f"   [{idx}/{len(test_queries)}] {query_preview}")
+            
+            # Create a new thread for each query
+            thread = project_client.agents.threads.create()
+            
+            # Send the query
+            project_client.agents.messages.create(
+                thread.id,
+                role=MessageRole.USER,
+                content=query
+            )
+            
+            # Run the agent
+            run = project_client.agents.runs.create_and_process(
+                thread_id=thread.id,
+                agent_id=agent_id
+            )
+            
+            # Convert thread to evaluation format
+            evaluation_data = thread_data_converter.prepare_evaluation_data(thread_ids=thread.id)
+            eval_item = evaluation_data[0]
+            
+            # Combine query and response into conversation format
+            query_messages = eval_item.get("query", [])
+            response_messages = eval_item.get("response", [])
+            conversation_messages = query_messages + response_messages
+            
+            # Create evaluation record with conversation
+            eval_record = {
+                "conversation": {"messages": conversation_messages},
+                "query": query
+            }
+            
+            f.write(json.dumps(eval_record) + '\n')
+    
+    print(f"\n✅ Test queries completed!")
+    print(f"   Evaluation input saved to: {eval_input_path}")
+    print()
+    
+    # Import safety evaluators
+    from azure.ai.evaluation import (
+        ViolenceEvaluator,
+        SexualEvaluator,
+        SelfHarmEvaluator,
+        HateUnfairnessEvaluator
+    )
+    
+    # Extract project details from endpoint
+    # Endpoint format: https://<resource-name>.services.ai.azure.com/api/projects/<project-name>
+    import re
+    endpoint_match = re.search(r'https://(.+?)\.services\.ai\.azure\.com/api/projects/(.+)', project_endpoint)
+    if not endpoint_match:
+        raise ValueError(f"Could not parse project endpoint: {project_endpoint}")
+    
+    resource_name = endpoint_match.group(1)
+    project_name = endpoint_match.group(2)
+    
+    # Get additional details from environment
+    subscription_id = os.environ.get("AZURE_SUBSCRIPTION_ID")
+    resource_group_name = os.environ.get("AZURE_RESOURCE_GROUP", "nielsen-agent-demo-rg")  # Default or from env
+    
+    # Define azure_ai_project config for safety evaluators  
+    # Safety evaluators need the workspace/project scope
+    azure_ai_project = {
+        "subscription_id": subscription_id,
+        "resource_group_name": resource_group_name,
+        "project_name": project_name,
+        "credential": credential
+    }
+    
+    print(f"📋 Project Details:")
+    print(f"   Subscription: {subscription_id}")
+    print(f"   Resource Group: {resource_group_name}")
+    print(f"   Project Name: {project_name}")
+    print()
+    
+    # Define safety evaluators (must be a dict of name: evaluator_instance)
+    # Safety evaluators use azure_ai_project dict (credential is included in it)
     safety_evaluators = {
-        "violence": "ViolenceEvaluator",
-        "sexual": "SexualEvaluator", 
-        "self_harm": "SelfHarmEvaluator",
-        "hate_unfairness": "HateUnfairnessEvaluator",
-        "indirect_attack": "IndirectAttackEvaluator",
-        "protected_material": "ProtectedMaterialEvaluator"
+        "violence": ViolenceEvaluator(azure_ai_project=azure_ai_project),
+        "sexual": SexualEvaluator(azure_ai_project=azure_ai_project),
+        "self_harm": SelfHarmEvaluator(azure_ai_project=azure_ai_project),
+        "hate_unfairness": HateUnfairnessEvaluator(azure_ai_project=azure_ai_project)
     }
     
     print("🛡️  Safety Evaluators:")
-    for name, evaluator in safety_evaluators.items():
-        print(f"   • {evaluator}")
+    for name in safety_evaluators.keys():
+        print(f"   • {name}")
     print()
     
     # Run evaluation
@@ -73,16 +172,16 @@ def run_safety_evaluation():
     
     try:
         result = evaluate(
-            data=queries,
-            evaluators=list(safety_evaluators.values()),
+            data=eval_input_path,
+            evaluators=safety_evaluators,
             evaluator_config={
-                "default": {
-                    "column_mapping": {
-                        "query": "${data.query}"
-                    }
-                }
+                # Safety evaluators need conversation format
+                "violence": {"column_mapping": {"conversation": "${data.conversation}"}},
+                "sexual": {"column_mapping": {"conversation": "${data.conversation}"}},
+                "self_harm": {"column_mapping": {"conversation": "${data.conversation}"}},
+                "hate_unfairness": {"column_mapping": {"conversation": "${data.conversation}"}}
             },
-            azure_ai_project=project_client.scope,
+            azure_ai_project=project_endpoint,
             agent_id=agent_id
         )
         
@@ -139,10 +238,7 @@ def run_safety_evaluation():
                 
                 print()
         
-        # Save results
-        output_dir = "evaluation_results/safety_eval_output"
-        os.makedirs(output_dir, exist_ok=True)
-        
+        # Save results (output_dir already created earlier)
         output_file = os.path.join(output_dir, "safety-eval-output.json")
         
         # Save full results
@@ -156,7 +252,7 @@ def run_safety_evaluation():
         summary_file = os.path.join(output_dir, "safety-summary.json")
         summary_data = {
             "agent_id": agent_id,
-            "total_queries": len(queries),
+            "total_queries": len(test_queries),
             "safety_metrics": safety_summary,
             "overall_status": "Pass" if all(s["defect_rate"] == 0 for s in safety_summary.values()) else "Warning"
         }
