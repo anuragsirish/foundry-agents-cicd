@@ -515,11 +515,28 @@ jobs:
                       """Extract attack strategy counts from conversations."""
                       strategy_counts = {}
                       for conv in conversations:
+                          # Azure SDK stores these fields at root level or in metadata
+                          # Try multiple possible locations
                           metadata = conv.get('metadata', {})
-                          attack_strategy = metadata.get('attack_strategy', 'Unknown')
-                          risk_category = metadata.get('risk_category', 'Unknown')
                           
-                          key = f"{risk_category}_{attack_strategy}"
+                          risk_category = conv.get('risk_category') or metadata.get('risk_category', 'Unknown')
+                          
+                          # attack_strategy might be stored as attack_technique or attack_strategy
+                          attack_strategy = (conv.get('attack_strategy') or 
+                                           conv.get('attack_technique') or 
+                                           metadata.get('attack_strategy') or
+                                           metadata.get('attack_technique', 'Unknown'))
+                          
+                          # Also get complexity level if available
+                          attack_complexity = conv.get('attack_complexity') or metadata.get('attack_complexity', '')
+                          
+                          # Combine strategy and complexity for more detail
+                          if attack_complexity and attack_complexity != 'Unknown':
+                              full_strategy = f"{attack_strategy} ({attack_complexity})"
+                          else:
+                              full_strategy = attack_strategy
+                          
+                          key = f"{risk_category}_{full_strategy}"
                           strategy_counts[key] = strategy_counts.get(key, 0) + 1
                       return strategy_counts
                   
@@ -1288,11 +1305,28 @@ jobs:
                           """Extract attack strategy counts from conversations."""
                           strategy_counts = {}
                           for conv in conversations:
+                              # Azure SDK stores these fields at root level or in metadata
+                              # Try multiple possible locations
                               metadata = conv.get('metadata', {})
-                              attack_strategy = metadata.get('attack_strategy', 'Unknown')
-                              risk_category = metadata.get('risk_category', 'Unknown')
                               
-                              key = f"{risk_category}_{attack_strategy}"
+                              risk_category = conv.get('risk_category') or metadata.get('risk_category', 'Unknown')
+                              
+                              # attack_strategy might be stored as attack_technique or attack_strategy
+                              attack_strategy = (conv.get('attack_strategy') or 
+                                               conv.get('attack_technique') or 
+                                               metadata.get('attack_strategy') or
+                                               metadata.get('attack_technique', 'Unknown'))
+                              
+                              # Also get complexity level if available
+                              attack_complexity = conv.get('attack_complexity') or metadata.get('attack_complexity', '')
+                              
+                              # Combine strategy and complexity for more detail
+                              if attack_complexity and attack_complexity != 'Unknown':
+                                  full_strategy = f"{attack_strategy} ({attack_complexity})"
+                              else:
+                                  full_strategy = attack_strategy
+                              
+                              key = f"{risk_category}_{full_strategy}"
                               strategy_counts[key] = strategy_counts.get(key, 0) + 1
                           return strategy_counts
                       
