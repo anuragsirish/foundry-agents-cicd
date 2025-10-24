@@ -485,15 +485,132 @@ jobs:
               print(f"{'Attack Success Rate':<25} Baseline: {baseline_asr:.1f}%  V2: {v2_asr:.1f}%  {asr_status}")
               print(f"{'Total Attacks':<25} Baseline: {baseline_attacks}  V2: {v2_attacks}")
               
+              # Attack Strategy Breakdown - Load conversation files
+              def load_conversations(file_path):
+                  """Load conversation details to extract attack strategies."""
+                  try:
+                      if not os.path.exists(file_path):
+                          print(f"Conversation file not found: {file_path}")
+                          return []
+                      conversations = []
+                      with open(file_path, 'r', encoding='utf-8') as f:
+                          for line in f:
+                              if line.strip():
+                                  conversations.append(json.loads(line))
+                      print(f"Loaded {len(conversations)} conversations from {file_path}")
+                      return conversations
+                  except Exception as e:
+                      print(f"Could not load conversations from {file_path}: {e}")
+                      return []
+              
+              baseline_conversations = load_conversations('baseline-redteam-results/redteam-conversations.jsonl')
+              v2_conversations = load_conversations('v2-redteam-results/redteam-conversations.jsonl')
+              
+              # Add Attack Strategy Breakdown
+              comparison_md += "\n### 🎯 Attack Strategy Breakdown\n\n"
+              
+              if baseline_conversations or v2_conversations:
+                  # Extract attack strategies from metadata
+                  def extract_attack_strategies(conversations):
+                      """Extract attack strategy counts from conversations."""
+                      strategy_counts = {}
+                      for conv in conversations:
+                          metadata = conv.get('metadata', {})
+                          attack_strategy = metadata.get('attack_strategy', 'Unknown')
+                          risk_category = metadata.get('risk_category', 'Unknown')
+                          
+                          key = f"{risk_category}_{attack_strategy}"
+                          strategy_counts[key] = strategy_counts.get(key, 0) + 1
+                      return strategy_counts
+                  
+                  baseline_strategies = extract_attack_strategies(baseline_conversations)
+                  v2_strategies = extract_attack_strategies(v2_conversations)
+                  
+                  # Get all unique strategies
+                  all_strategies = set(list(baseline_strategies.keys()) + list(v2_strategies.keys()))
+                  
+                  if all_strategies:
+                      comparison_md += "| Risk Category | Attack Strategy | Baseline Count | V2 Count |\n"
+                      comparison_md += "|---------------|-----------------|----------------|----------|\n"
+                      
+                      print("\n### 🎯 Attack Strategy Breakdown")
+                      print()
+                      
+                      for strategy_key in sorted(all_strategies):
+                          # Parse the key
+                          parts = strategy_key.split('_', 1)
+                          if len(parts) == 2:
+                              risk_cat, attack_strat = parts
+                              risk_cat_display = risk_cat.replace('_', ' ').title()
+                              attack_strat_display = attack_strat.replace('_', ' ').title()
+                          else:
+                              risk_cat_display = "Unknown"
+                              attack_strat_display = strategy_key.replace('_', ' ').title()
+                          
+                          baseline_count = baseline_strategies.get(strategy_key, 0)
+                          v2_count = v2_strategies.get(strategy_key, 0)
+                          
+                          comparison_md += f"| {risk_cat_display} | {attack_strat_display} | {baseline_count} | {v2_count} |\n"
+                          print(f"  {risk_cat_display:<22} {attack_strat_display:<30} Baseline: {baseline_count:>3}  V2: {v2_count:>3}")
+                      
+                      comparison_md += "\n"
+                      print()
+                  else:
+                      comparison_md += "*Attack strategy details not available in conversation metadata.*\n\n"
+                      print("  Attack strategy details not available in conversation metadata.")
+              else:
+                  comparison_md += "*Conversation files not found. Attack strategy breakdown unavailable.*\n\n"
+                  print("  Conversation files not found. Attack strategy breakdown unavailable.")
+              
+              # Safety metrics from red team
+              comparison_md += "### 🛡️ Red Team Safety Defect Rates\n\n"
+              comparison_md += "| Category | Baseline | V2 | Status |\n"
+              comparison_md += "|----------|----------|----|---------|\n"
+              
+              baseline_safety = baseline_redteam.get('safety_metrics', {})
+              v2_safety = v2_redteam.get('safety_metrics', {})
+              
+              print("### 🛡️ Red Team Safety Defect Rates")
+              print()
+              
+              if baseline_safety and v2_safety:
+                  for category in ['violence', 'sexual', 'self_harm', 'hate_unfairness']:
+                      baseline_data = baseline_safety.get(category, {})
+                      v2_data = v2_safety.get(category, {})
+                      
+                      baseline_rate = baseline_data.get('defect_rate', 0) * 100
+                      v2_rate = v2_data.get('defect_rate', 0) * 100
+                      
+                      baseline_status_emoji = baseline_data.get('status', '')
+                      v2_status_emoji = v2_data.get('status', '')
+                      
+                      # Lower defect rate is better
+                      if v2_rate < baseline_rate - 1:
+                          status = "🟢 Improved"
+                      elif v2_rate > baseline_rate + 1:
+                          status = "🔴 Regressed"
+                      else:
+                          status = "🟡 Similar"
+                      
+                      category_name = category.replace('_', ' ').title()
+                      comparison_md += f"| {category_name} | {baseline_rate:.1f}% {baseline_status_emoji} | {v2_rate:.1f}% {v2_status_emoji} | {status} |\n"
+                      print(f"  {category_name:<22} Baseline: {baseline_rate:>5.1f}%  V2: {v2_rate:>5.1f}%  {status}")
+              
+              comparison_md += "\n"
+              print()
+              
               # Vulnerable categories
               baseline_vuln = baseline_redteam.get('vulnerable_categories', [])
               v2_vuln = v2_redteam.get('vulnerable_categories', [])
               
-              comparison_md += f"| Vulnerable Categories | {len(baseline_vuln)} | {len(v2_vuln)} | {'🟢' if len(v2_vuln) <= len(baseline_vuln) else '🔴'} |\n"
-              print(f"{'Vulnerable Categories':<25} Baseline: {len(baseline_vuln)}  V2: {len(v2_vuln)}")
-              
-              if v2_vuln:
-                  comparison_md += f"\n**V2 Vulnerabilities**: {', '.join([c.replace('_', ' ').title() for c in v2_vuln])}\n"
+              if baseline_vuln or v2_vuln:
+                  comparison_md += "### ⚠️ Vulnerable Categories\n\n"
+                  comparison_md += f"**Baseline**: {', '.join([c.replace('_', ' ').title() for c in baseline_vuln]) if baseline_vuln else 'None'}\n\n"
+                  comparison_md += f"**V2**: {', '.join([c.replace('_', ' ').title() for c in v2_vuln]) if v2_vuln else 'None'}\n\n"
+                  
+                  print("### ⚠️ Vulnerable Categories")
+                  print(f"  Baseline: {', '.join([c.replace('_', ' ').title() for c in baseline_vuln]) if baseline_vuln else 'None'}")
+                  print(f"  V2: {', '.join([c.replace('_', ' ').title() for c in v2_vuln]) if v2_vuln else 'None'}")
               
               print()
           
@@ -506,7 +623,7 @@ jobs:
           comparison_md += "\n**Evaluation Coverage:**\n"
           comparison_md += "- ✅ Quality Metrics (8 evaluators)\n"
           comparison_md += "- ✅ Safety Evaluation (4 risk categories)\n"
-          comparison_md += "- ✅ Red Team Testing (65+ attack strategies)\n\n"
+          comparison_md += "- ✅ Red Team Testing (10+ attack strategies per risk category)\n\n"
           
           if regressions == 0:
               comparison_md += "✅ **No regressions detected** - V2 agent maintains or improves across all dimensions!\n"
