@@ -510,34 +510,28 @@ jobs:
               comparison_md += "\n### 🎯 Attack Strategy Breakdown\n\n"
               
               if baseline_conversations or v2_conversations:
-                  # Extract attack strategies from metadata
+                  # Extract attack strategies from attack_details
                   def extract_attack_strategies(conversations):
                       """Extract attack strategy counts from conversations."""
                       strategy_counts = {}
                       for conv in conversations:
-                          # Azure SDK stores these fields at root level or in metadata
-                          # Try multiple possible locations
-                          metadata = conv.get('metadata', {})
+                          # The actual attack details are in the 'attack_details' array
+                          attack_details_list = conv.get('attack_details', [])
                           
-                          risk_category = conv.get('risk_category') or metadata.get('risk_category', 'Unknown')
-                          
-                          # attack_strategy might be stored as attack_technique or attack_strategy
-                          attack_strategy = (conv.get('attack_strategy') or 
-                                           conv.get('attack_technique') or 
-                                           metadata.get('attack_strategy') or
-                                           metadata.get('attack_technique', 'Unknown'))
-                          
-                          # Also get complexity level if available
-                          attack_complexity = conv.get('attack_complexity') or metadata.get('attack_complexity', '')
-                          
-                          # Combine strategy and complexity for more detail
-                          if attack_complexity and attack_complexity != 'Unknown':
-                              full_strategy = f"{attack_strategy} ({attack_complexity})"
-                          else:
-                              full_strategy = attack_strategy
-                          
-                          key = f"{risk_category}_{full_strategy}"
-                          strategy_counts[key] = strategy_counts.get(key, 0) + 1
+                          for attack_detail in attack_details_list:
+                              # Extract from attack_detail object
+                              risk_category = attack_detail.get('risk_category', 'Unknown')
+                              attack_technique = attack_detail.get('attack_technique', 'Unknown')
+                              attack_complexity = attack_detail.get('attack_complexity', '')
+                              
+                              # Combine technique and complexity for display
+                              if attack_complexity:
+                                  full_strategy = f"{attack_technique} ({attack_complexity})"
+                              else:
+                                  full_strategy = attack_technique
+                              
+                              key = f"{risk_category}_{full_strategy}"
+                              strategy_counts[key] = strategy_counts.get(key, 0) + 1
                       return strategy_counts
                   
                   baseline_strategies = extract_attack_strategies(baseline_conversations)
@@ -1305,29 +1299,23 @@ jobs:
                           """Extract attack strategy counts from conversations."""
                           strategy_counts = {}
                           for conv in conversations:
-                              # Azure SDK stores these fields at root level or in metadata
-                              # Try multiple possible locations
-                              metadata = conv.get('metadata', {})
+                              # The actual attack details are in the 'attack_details' array
+                              attack_details_list = conv.get('attack_details', [])
                               
-                              risk_category = conv.get('risk_category') or metadata.get('risk_category', 'Unknown')
-                              
-                              # attack_strategy might be stored as attack_technique or attack_strategy
-                              attack_strategy = (conv.get('attack_strategy') or 
-                                               conv.get('attack_technique') or 
-                                               metadata.get('attack_strategy') or
-                                               metadata.get('attack_technique', 'Unknown'))
-                              
-                              # Also get complexity level if available
-                              attack_complexity = conv.get('attack_complexity') or metadata.get('attack_complexity', '')
-                              
-                              # Combine strategy and complexity for more detail
-                              if attack_complexity and attack_complexity != 'Unknown':
-                                  full_strategy = f"{attack_strategy} ({attack_complexity})"
-                              else:
-                                  full_strategy = attack_strategy
-                              
-                              key = f"{risk_category}_{full_strategy}"
-                              strategy_counts[key] = strategy_counts.get(key, 0) + 1
+                              for attack_detail in attack_details_list:
+                                  # Extract from attack_detail object
+                                  risk_category = attack_detail.get('risk_category', 'Unknown')
+                                  attack_technique = attack_detail.get('attack_technique', 'Unknown')
+                                  attack_complexity = attack_detail.get('attack_complexity', '')
+                                  
+                                  # Combine technique and complexity for display
+                                  if attack_complexity:
+                                      full_strategy = f"{attack_technique} ({attack_complexity})"
+                                  else:
+                                      full_strategy = attack_technique
+                                  
+                                  key = f"{risk_category}_{full_strategy}"
+                                  strategy_counts[key] = strategy_counts.get(key, 0) + 1
                           return strategy_counts
                       
                       baseline_strategies = extract_attack_strategies(baseline_conversations)
