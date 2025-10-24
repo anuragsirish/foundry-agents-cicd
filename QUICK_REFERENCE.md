@@ -1,4 +1,4 @@
-# 🚀 Quick Reference: Dual-Agent Evaluation Pipeline
+# 🚀 Quick Reference: Comprehensive Agent Evaluation Pipeline
 
 ## For Developers
 
@@ -10,11 +10,19 @@ git checkout -b feature/improve-agent-responses
 
 # 2. Make your changes to agent code or test queries
 
-# 3. (Optional) Test locally
+# 3. (Optional) Test locally - run one or all evaluations
 export AGENT_ID_BASELINE="asst_xxxxx"
 export AZURE_AI_PROJECT_ENDPOINT="https://..."
 export AZURE_DEPLOYMENT_NAME="gpt-4.1"
-python scripts/local_agent_eval.py
+
+# Quality evaluation (8 metrics)
+python scripts/local_quality_eval.py
+
+# Safety evaluation (4 risk categories)
+python scripts/local_safety_eval.py
+
+# Red team testing (10+ scenarios)
+python scripts/local_redteam_eval.py
 
 # 4. Commit and push
 git add .
@@ -25,10 +33,10 @@ git push origin feature/improve-agent-responses
 gh pr create --title "Improve agent responses" --body "Details..."
 
 # 6. Workflow automatically:
-#    - Evaluates baseline agent
-#    - Evaluates V2 agent
-#    - Compares results
-#    - Posts comparison to PR
+#    - Evaluates baseline agent (quality + safety + red team)
+#    - Evaluates V2 agent (quality + safety + red team)
+#    - Compares results across all three tiers
+#    - Posts comprehensive comparison to PR
 #    - Always passes (you decide on merge)
 
 # 7. Review comparison and merge
@@ -36,27 +44,28 @@ gh pr create --title "Improve agent responses" --body "Details..."
 
 ### Understanding Comparison Results
 
-#### 🟢 Green (Improvement)
+#### Quality Metrics (8 evaluators)
 ```
-| Relevance | 4.20 | 4.50 | +0.30 | 🟢 |
+| Relevance | 4.20 | 4.50 | +7% |
 ```
-**Meaning:** V2 agent improved on this metric
+**Meaning:** Shows percentage change in quality scores (1-5 scale)
 
-#### 🔴 Red (Regression)
+#### Safety Evaluation (4 risk categories)
 ```
-| Coherence | 4.50 | 4.20 | -0.30 | 🔴 |
+| Violence | 0 | 0 | 0% |
+| Hate/Unfairness | 1 | 0 | -100% |
 ```
-**Meaning:** V2 agent regressed on this metric
-**Action:** 
-- Investigate the cause
-- Fix if unintended
-- Document if acceptable trade-off
+**Meaning:** Defect counts and percentage change
+**Good:** Negative percentages mean fewer defects in V2
 
-#### 🟡 Yellow (Neutral)
+#### Red Team Testing (10+ scenarios per category)
 ```
-| Fluency | 4.30 | 4.32 | +0.02 | 🟡 |
+Attack Strategy Breakdown:
+| ROT13     | 2 | 1 | -50%  |
+| Leetspeak | 3 | 1 | -67%  |
 ```
-**Meaning:** No significant change
+**Meaning:** Shows which specific attacks were tested and vulnerability counts
+**Good:** Negative percentages mean better resilience in V2
 
 ### Common Scenarios
 
@@ -67,7 +76,7 @@ gh pr create --title "Improve agent responses" --body "Details..."
 - Is it a known trade-off?
 
 Document your reasoning in the PR description.
-3. Test locally: `python scripts/local_agent_eval.py`
+3. Test locally: `python scripts/local_quality_eval.py` (or safety/redteam versions)
 4. Consider reverting problematic changes
 5. If degradation is intentional, document in PR description
 
@@ -210,40 +219,76 @@ git diff --name-only origin/main
 
 ### Local Development (.env)
 ```bash
+# Required for all evaluations
 AZURE_AI_PROJECT_ENDPOINT=https://...
 AZURE_DEPLOYMENT_NAME=gpt-4o
 AGENT_ID_BASELINE=asst_xxxxx
 AZURE_OPENAI_ENDPOINT=https://...
 AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
+
+# Red team testing specific
+RED_TEAM_MAX_SCENARIOS=10  # Number of scenarios per risk category
 ```
 
 ### GitHub Actions (Repository Variables)
 ```
+# Authentication
 AZURE_CLIENT_ID
 AZURE_TENANT_ID
 AZURE_SUBSCRIPTION_ID
+
+# Agent configuration
+AGENT_ID_BASELINE
+AGENT_ID_V2
+AGENT_ID_STAGING (for staging environment)
+AGENT_ID_PRODUCTION (for production environment)
+
+# Azure AI configuration
 AZURE_AI_PROJECT_ENDPOINT
 AZURE_DEPLOYMENT_NAME
-AGENT_ID_BASELINE
 AZURE_OPENAI_ENDPOINT
 AZURE_OPENAI_DEPLOYMENT_NAME
 API_VERSION
 ```
 
-## Metrics Thresholds
+## Evaluation Metrics
 
-| Metric | Threshold | Impact |
-|--------|-----------|--------|
-| Quality metrics | -5% | Blocks PR |
-| Performance | No limit | Warning only |
-| Token usage | No limit | Monitor costs |
+### Quality Metrics (1-5 scale)
+- Relevance
+- Coherence
+- Fluency
+- Groundedness
+- Similarity
+- Intent Resolution
+- Task Adherence
+- Tool Call Accuracy (0-1 scale)
+
+### Safety Categories (Severity 0-7)
+- Violence
+- Sexual
+- Self Harm
+- Hate/Unfairness
+- Threshold: Severity ≥3 is considered a defect
+
+### Red Team Attack Strategies
+- EASY, MODERATE (difficulty levels)
+- CharacterSpace, ROT13, Leetspeak (encoding)
+- CharSwap, UnicodeConfusable, Flip (character manipulation)
+- Base64+ROT13, Base64, Morse, Tense (transformation)
+
+## Related Documentation
+
+- **[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)**: Dev → Staging → Production process
+- **[CICD_PIPELINE.md](./CICD_PIPELINE.md)**: Pipeline implementation details
+- **[SETUP-GUIDE.md](./SETUP-GUIDE.md)**: Azure and GitHub setup
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)**: System architecture
+- **[README.md](./README.md)**: Project overview
 
 ## Support
 
-- **Documentation**: [CICD_PIPELINE.md](./CICD_PIPELINE.md)
-- **Setup**: [SETUP-GUIDE.md](./SETUP-GUIDE.md)
 - **Issues**: GitHub Issues tab
 - **Logs**: GitHub Actions → Workflow runs
+- **Azure Portal**: [AI Foundry](https://ai.azure.com)
 
 ---
 Last Updated: January 2025
