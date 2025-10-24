@@ -1,16 +1,16 @@
-# CI/CD Pipeline for Dual-Agent Evaluation
+# CI/CD Pipeline for Comprehensive Agent Evaluation
 
-This repository implements an automated CI/CD pipeline that evaluates and compares two AI agents (baseline and V2) on every pull request, providing clear metrics for data-driven merge decisions.
+This repository implements an automated CI/CD pipeline that evaluates and compares two AI agents (baseline and V2) on every pull request across **three tiers** (Quality, Safety, Red Team), providing comprehensive metrics for data-driven merge decisions.
 
 ## 🎯 Overview
 
 The CI/CD pipeline automatically:
-- 🎯 Evaluates baseline agent with test queries
-- 🚀 Evaluates V2 agent with same test queries
-- 📊 Compares metrics across 5 quality dimensions
-- 💬 Posts comparison table to PR comments
-- � Displays results in GitHub Actions summary
-- � Uploads full results as artifacts
+- 🎯 Evaluates baseline agent with test queries (quality + safety + red team)
+- 🚀 Evaluates V2 agent with same test queries (quality + safety + red team)
+- 📊 Compares metrics across 8 quality dimensions, 4 safety categories, 10+ red team scenarios
+- 💬 Posts comprehensive comparison table to PR comments with attack strategy breakdown
+- 📋 Displays results in GitHub Actions summary
+- 📦 Uploads full results as artifacts
 - ✅ Always passes (you decide whether to merge)
 
 ## 🏗️ Architecture
@@ -22,28 +22,38 @@ The CI/CD pipeline automatically:
 └────────┬────────┘
          │
          ▼
-┌─────────────────────────────────────────┐
-│  PR Workflow (agent-eval-on-pr.yml)     │
-│  ─────────────────────────────────────  │
-│  1. Checkout PR branch                  │
-│  2. Azure authentication (OIDC)         │
-│  3. Evaluate baseline agent             │
-│  4. Evaluate V2 agent                   │
-│  5. Compare metrics (baseline vs V2)    │
-│  6. Post comparison to PR comment       │
-│  7. Display in GitHub Actions summary   │
-│  8. Upload artifacts                    │
-│  9. ✅ Always pass                      │
-└────────┬────────────────────────────────┘
+┌──────────────────────────────────────────────────┐
+│  PR Workflow (agent-evaluation-unified.yml)      │
+│  ──────────────────────────────────────────────  │
+│  1. Checkout PR branch                           │
+│  2. Azure authentication (OIDC)                  │
+│                                                   │
+│  3. Quality Evaluation (8 metrics)               │
+│     - Evaluate baseline agent                    │
+│     - Evaluate V2 agent                          │
+│                                                   │
+│  4. Safety Evaluation (4 categories)             │
+│     - ContentSafetyEvaluator for both agents     │
+│                                                   │
+│  5. Red Team Testing (10+ scenarios)             │
+│     - 11 attack strategies per risk category     │
+│     - Granular attack breakdown                  │
+│                                                   │
+│  6. Compare all metrics (baseline vs V2)         │
+│  7. Post comprehensive report to PR comment      │
+│  8. Display in GitHub Actions summary            │
+│  9. Upload artifacts                             │
+│  10. ✅ Always pass                              │
+└────────┬─────────────────────────────────────────┘
          │
          ▼
-   Developer reviews metrics
+   Developer reviews comprehensive metrics
    and decides to merge or not
 ```
 
 ## 📋 Workflows
 
-### **agent-eval-on-pr.yml** - Dual-Agent Evaluation (ACTIVE)
+### **agent-evaluation-unified.yml** - Comprehensive Three-Tier Evaluation (ACTIVE)
 
 **Triggers on:**
 - Pull requests to `main` branch
@@ -54,19 +64,22 @@ The CI/CD pipeline automatically:
 - Manual workflow dispatch
 
 **Features:**
-- 🤖 Evaluates both baseline and V2 agents
-- 📊 Comparison table with status indicators (🟢🔴🟡)
-- 💬 Automated PR comments
+- 🤖 Three-tier evaluation: Quality (8 metrics) + Safety (4 categories) + Red Team (10+ scenarios)
+- 📊 Comprehensive comparison with percentage changes
+- 🔴 Granular attack strategy breakdown (ROT13, Leetspeak, Base64, etc.)
+- 💬 Automated PR comments with all three evaluation tiers
 - 📋 GitHub Actions summary display
-- 📦 Artifact uploads (full JSON results)
+- 📦 Artifact uploads (full JSON results for all three tiers)
 - ✅ Always passes (manual merge decision)
 - 🔐 Secure with federated credentials (OIDC)
 
 **What You Get:**
-- Side-by-side comparison of all metrics
-- Clear indicators for improvements/regressions
+- Side-by-side comparison of all quality, safety, and red team metrics
+- Clear percentage changes showing improvements/regressions
+- Attack strategy counts showing which attacks were tested
+- Vulnerable category examples for red team failures
 - Downloadable artifacts for deep analysis
-- Full transparency into agent performance
+- Full transparency into agent performance and security
 
 ## 🚀 Setup Instructions
 
@@ -78,17 +91,16 @@ Add these as **Repository Variables** (Settings → Secrets and variables → Ac
 # Required Variables
 AGENT_ID_BASELINE         # Baseline agent ID (e.g., asst_z8OW...)
 AGENT_ID_V2               # V2 agent ID to compare (e.g., asst_Q15...)
+AGENT_ID_STAGING          # (Optional) Staging environment agent
+AGENT_ID_PRODUCTION       # (Optional) Production environment agent
 AZURE_CLIENT_ID           # Azure service principal client ID
 AZURE_TENANT_ID           # Azure tenant ID
 AZURE_SUBSCRIPTION_ID     # Azure subscription ID
-AZURE_AI_PROJECT_ENDPOINT # AI Foundry project endpoint
-AZURE_DEPLOYMENT_NAME     # Model deployment name (e.g., gpt-4.1)
-AZURE_AI_PROJECT_ENDPOINT # https://your-project.region.ai.azure.com/api/projects/your-project
-AZURE_DEPLOYMENT_NAME     # gpt-4o or your model deployment
-AGENT_ID_BASELINE         # Your agent ID (asst_xxxxx)
-API_VERSION              # 2024-08-01-preview
-AZURE_OPENAI_ENDPOINT    # For evaluators
-AZURE_OPENAI_API_VERSION # 2024-02-15-preview
+AZURE_AI_PROJECT_ENDPOINT # AI Foundry project endpoint (https://your-project.region.ai.azure.com)
+AZURE_DEPLOYMENT_NAME     # Model deployment name (e.g., gpt-4o)
+API_VERSION               # 2024-08-01-preview
+AZURE_OPENAI_ENDPOINT     # For evaluators
+AZURE_OPENAI_API_VERSION  # 2024-02-15-preview
 AZURE_OPENAI_DEPLOYMENT_NAME # Model for evaluators
 ```
 
@@ -107,14 +119,13 @@ Subject: repo:your-org/your-repo:pull_request
 
 **Option A: Run evaluation locally first**
 ```bash
-# Run evaluation locally
-python scripts/local_agent_eval.py
-
-# Initialize baseline from results
-python scripts/initialize_baseline.py
+# Run evaluations locally
+python scripts/local_quality_eval.py    # Quality metrics
+python scripts/local_safety_eval.py     # Safety evaluation  
+python scripts/local_redteam_eval.py    # Red team testing
 
 # Commit baseline to main
-git add evaluation_results/baseline/
+git add evaluation_results/
 git commit -m "Initialize baseline metrics"
 git push origin main
 ```
@@ -310,9 +321,12 @@ evaluation_results/
 
 ## 🔗 Related Documentation
 
-- [Azure AI Agent Evaluation Setup](./SETUP-GUIDE.md)
-- [Azure AI GitHub Eval Overview](./azure-ai-github-eval.md)
-- [Agent Creation Guide](./agent-setup/README.md)
+- **[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)**: Dev → Staging → Production deployment process
+- **[SETUP-GUIDE.md](./SETUP-GUIDE.md)**: Azure AI Agent Evaluation Setup
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)**: System architecture and design
+- **[QUICK_REFERENCE.md](./QUICK_REFERENCE.md)**: Command reference guide
+- **[azure-ai-github-eval.md](./azure-ai-github-eval.md)**: Azure AI GitHub Eval Overview
+- **[agent-setup/README.md](./agent-setup/README.md)**: Agent Creation Guide
 
 ## 🤝 Contributing
 
@@ -320,10 +334,13 @@ When contributing agent improvements:
 
 1. Create a feature branch
 2. Make your changes
-3. Run local evaluation: `python scripts/local_agent_eval.py`
-4. Create PR (CI/CD kicks in automatically)
-5. Review evaluation results in PR comment
-6. Address any quality degradations
+3. Run local evaluations:
+   - `python scripts/local_quality_eval.py`
+   - `python scripts/local_safety_eval.py`
+   - `python scripts/local_redteam_eval.py`
+4. Create PR (comprehensive CI/CD kicks in automatically)
+5. Review evaluation results in PR comment (quality + safety + red team)
+6. Address any quality degradations or safety issues
 7. Merge when approved and passing
 
 ## 📞 Support
