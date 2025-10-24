@@ -51,7 +51,7 @@ jobs:
           AZURE_OPENAI_DEPLOYMENT_NAME: ${{ vars.AZURE_OPENAI_DEPLOYMENT_NAME }}
         run: |
           echo "🚀 Running baseline evaluation on main branch..."
-          python scripts/local_agent_eval.py
+          python scripts/local_quality_eval.py
           echo "✅ Evaluation completed"
       
       - name: Create Baseline Directory

@@ -80,10 +80,10 @@ jobs:
           AGENT_ID_BASELINE: ${{ vars.AGENT_ID_BASELINE }}
         run: |
           echo "🎯 Evaluating Baseline Agent (${{ vars.AGENT_ID_BASELINE }})..."
-          python scripts/local_agent_eval.py
+          python scripts/local_quality_eval.py
           
           # Save baseline results
-          cp evaluation_results/agent_eval_output/eval-output.json \
+          cp evaluation_results/quality_eval_output/quality-eval-output.json \
              evaluation_results/baseline/baseline_results.json
           
           echo "✅ Baseline evaluation completed"
@@ -95,10 +95,10 @@ jobs:
           AGENT_ID_BASELINE: ${{ vars.AGENT_ID_V2 }}
         run: |
           echo "🚀 Evaluating V2 Agent (${{ vars.AGENT_ID_V2 }})..."
-          python scripts/local_agent_eval.py
+          python scripts/local_quality_eval.py
           
           # Save V2 results
-          cp evaluation_results/agent_eval_output/eval-output.json \
+          cp evaluation_results/quality_eval_output/quality-eval-output.json \
              evaluation_results/v2/v2_results.json
           
           echo "✅ V2 evaluation completed"
