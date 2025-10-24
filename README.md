@@ -1,66 +1,97 @@
-# 🤖 Azure AI Foundry - Dual-Agent Evaluation CI/CD
+# 🤖 Azure AI Foundry - Comprehensive Agent Evaluation CI/CD
 
-This project demonstrates automated AI agent evaluation and comparison using Azure AI Foundry and GitHub Actions. Every pull request automatically evaluates both baseline and V2 agents, compares their performance, and provides clear metrics for merge decisions.
+This project demonstrates automated AI agent evaluation and comparison using Azure AI Foundry and GitHub Actions. Every pull request automatically evaluates both baseline and V2 agents across **three tiers** (Quality, Safety, Red Team), compares their performance, and provides clear metrics for merge decisions.
 
 ## 🎯 Overview
 
-**Automated Agent Quality Assurance** - Never merge agent changes without knowing their impact on quality metrics.
+**Automated Agent Quality Assurance** - Never merge agent changes without knowing their impact on quality, safety, and security metrics.
 
 ### Key Features
 
-- **🎯 Dual-Agent Evaluation**: Automatically evaluates baseline and V2 agents on every PR
-- **📊 Visual Comparison**: Clear indicators (🟢 improvements, 🔴 regressions, 🟡 neutral)
-- **�️ Safety Evaluation**: Separate workflow for Violence, Sexual, SelfHarm, Hate, IndirectAttack, ProtectedMaterial
-- **�💬 PR Integration**: Results posted directly to PR comments
+- **🎯 Comprehensive Evaluation**: Three-tier evaluation (Quality + Safety + Red Team) on every PR
+- **📊 Visual Comparison**: Clear percentage changes and improvements/regressions
+- **🛡️ Safety Evaluation**: ContentSafetyEvaluator for Violence, Sexual, SelfHarm, Hate/Unfairness
+- **🔴 Red Team Testing**: 10+ attack scenarios per risk category with granular attack strategy breakdown
+- **💬 PR Integration**: Results posted directly to PR comments
 - **📋 GitHub Actions Summary**: Full comparison table visible on Actions tab
 - **✅ Always Passes**: Workflow provides metrics, you decide whether to merge
 - **📦 Artifacts**: Full evaluation results downloadable for deep analysis
 - **🔒 Secure**: Uses Azure federated credentials (OIDC) - no secrets in code
 
-## � What You Get
+## 📊 What You Get
 
-When you create a PR, two workflows automatically run:
+When you create a PR, a comprehensive evaluation workflow automatically runs:
 
-### Quality Metrics Workflow
-1. **Evaluates Baseline Agent** against test queries
-2. **Evaluates V2 Agent** against the same queries
-3. **Compares Results** across 5 quality dimensions:
-   - Relevance
-   - Coherence
-   - Fluency
-   - Groundedness
-   - Tool Call Accuracy
-4. **Posts Results** to PR comments and GitHub Actions summary
-5. **Uploads Artifacts** with full evaluation JSON
+### Three-Tier Evaluation Pipeline
 
-### Safety Evaluation Workflow
-1. **Evaluates Both Agents** for safety concerns:
-   - Violence
-   - Sexual content
-   - Self-harm
-   - Hate/Unfairness
-   - Indirect attacks
-   - Protected material
-2. **Posts Safety Metrics** as separate PR comment
-3. **Provides Defect Rates** for each safety category
+#### 1. Quality Metrics Evaluation
+- **Evaluates Both Agents** against test queries
+- **Compares Results** across 8 quality dimensions:
+  - Relevance
+  - Coherence
+  - Fluency
+  - Groundedness
+  - Similarity (to reference answers)
+  - Intent Resolution
+  - Task Adherence
+  - Tool Call Accuracy
+- **Shows Percentage Changes** and trends
+
+#### 2. Safety Evaluation
+- **ContentSafetyEvaluator** assesses both agents for:
+  - Violence
+  - Sexual content
+  - Self-harm
+  - Hate/Unfairness
+- **Defect Rates** calculated for each category
+- **Threshold Performance** tracking (pass rate at severity ≥3)
+
+#### 3. Red Team Testing
+- **10+ Attack Scenarios** per risk category
+- **11 Attack Strategies** including:
+  - EASY, MODERATE (difficulty levels)
+  - CharacterSpace, ROT13, Leetspeak (encoding attacks)
+  - CharSwap, UnicodeConfusable, Flip (character attacks)
+  - Base64+ROT13, Base64, Morse, Tense (transformation attacks)
+- **Granular Attack Breakdown** showing counts per strategy
+- **Vulnerable Categories** identified with examples
+
+All results are:
+- **Posted to PR Comments** with comprehensive comparison tables
+- **Visible in GitHub Actions Summary**
+- **Downloadable as Artifacts** for deep analysis
 
 ### Example Output
 
 ```
-📊 Baseline vs V2 Agent Comparison
+📊 Comprehensive Agent Comparison
 
-| Metric              | Baseline | V2   | Change  | Status |
-|---------------------|----------|------|---------|--------|
-| Relevance           | 4.20     | 4.50 | +0.30   | 🟢     |
-| Coherence           | 4.10     | 4.15 | +0.05   | 🟡     |
-| Fluency             | 4.30     | 4.25 | -0.05   | 🟡     |
-| Groundedness        | 4.00     | 4.20 | +0.20   | 🟢     |
-| Tool Call Accuracy  | 0.85     | 0.90 | +0.05   | 🟢     |
+Quality Metrics (8 evaluators):
+| Metric              | Baseline | V2   | Change   |
+|---------------------|----------|------|----------|
+| Relevance           | 4.20     | 4.50 | +7%      |
+| Coherence           | 4.10     | 4.15 | +1%      |
+| Groundedness        | 4.00     | 4.20 | +5%      |
+| Similarity          | 3.80     | 4.10 | +8%      |
+
+Safety Evaluation (4 risk categories):
+| Risk Category       | Baseline Defects | V2 Defects | Change   |
+|---------------------|------------------|------------|----------|
+| Violence            | 0                | 0          | 0%       |
+| Sexual              | 0                | 0          | 0%       |
+| Hate/Unfairness     | 1                | 0          | -100%    |
+
+Red Team Testing (10+ scenarios per category):
+| Attack Strategy     | Baseline Vulnerable | V2 Vulnerable | Change   |
+|---------------------|---------------------|---------------|----------|
+| ROT13               | 2                   | 1             | -50%     |
+| Leetspeak           | 3                   | 1             | -67%     |
+| Base64              | 1                   | 0             | -100%    |
 
 Summary:
-- 📈 Improvements: 3
-- 📉 Regressions: 0
-- ➖ Neutral: 2
+- 📈 Overall Quality: +5%
+- �️ Safety Defects: -50%
+- 🔴 Red Team Resilience: +40%
 ```
 
 ## �📋 Prerequisites
@@ -120,8 +151,10 @@ export AGENT_ID_BASELINE="asst_xxxxx"
 export AZURE_AI_PROJECT_ENDPOINT="https://..."
 export AZURE_DEPLOYMENT_NAME="gpt-4.1"
 
-# Run evaluation
-python scripts/local_agent_eval.py
+# Run evaluations (choose one or all)
+python scripts/local_quality_eval.py     # Quality metrics
+python scripts/local_safety_eval.py      # Safety evaluation
+python scripts/local_redteam_eval.py     # Red team testing
 ```
 
 ### 5. Create a Test PR
@@ -139,7 +172,7 @@ git commit -m "test: Trigger agent evaluation"
 git push -u origin test/agent-evaluation
 
 # Create PR
-gh pr create --title "Test: Agent Evaluation" --body "Testing dual-agent evaluation workflow"
+gh pr create --title "Test: Agent Evaluation" --body "Testing comprehensive three-tier evaluation workflow"
 ```
 
 ### 6. View Results
@@ -154,19 +187,21 @@ gh pr create --title "Test: Agent Evaluation" --body "Testing dual-agent evaluat
 foundry-agents-cicd/
 ├── .github/
 │   └── workflows/
-│       ├── agent-eval-on-pr.yml              # 🤖 Dual-agent evaluation on PR (ACTIVE)
-│       ├── agent-eval-on-pr-official.yml     # Microsoft action (DISABLED)
-│       └── update-baseline.yml               # Baseline update workflow
+│       └── agent-evaluation-unified.yml      # 🤖 Comprehensive three-tier evaluation (ACTIVE)
 ├── agent-setup/
 │   ├── create_agent_v2.py                    # Script to create V2 agent
 │   └── test_agent_locally.py                 # Local agent testing
 ├── data/
 │   └── agent-eval-data.json                  # Test queries and evaluators config
 ├── scripts/
-│   ├── local_agent_eval.py                   # Local evaluation script
-│   └── initialize_baseline.py                # Initialize baseline metrics
+│   ├── local_quality_eval.py                 # Quality evaluation (8 metrics)
+│   ├── local_safety_eval.py                  # Safety evaluation (4 categories)
+│   └── local_redteam_eval.py                 # Red team testing (10+ scenarios)
 ├── evaluation_results/
-│   ├── baseline/                             # Baseline agent results
+│   ├── quality_eval_output/                  # Quality evaluation results
+│   ├── safety_eval_output/                   # Safety evaluation results
+│   ├── redteam_eval_output/                  # Red team testing results
+│   └── baseline/                             # Baseline agent results
 │   ├── v2/                                   # V2 agent results
 │   └── agent_eval_output/                    # Raw evaluation output
 ├── docs/
@@ -434,6 +469,7 @@ Warning: github-script action failed
 | Document | Description |
 |----------|-------------|
 | [SETUP-GUIDE.md](SETUP-GUIDE.md) | Complete Azure and GitHub setup |
+| [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) | Dev → Staging → Production deployment process |
 | [DEMO_GUIDE.md](DEMO_GUIDE.md) | Customer demo instructions |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture and design |
 | [CICD_PIPELINE.md](CICD_PIPELINE.md) | Pipeline implementation details |
@@ -453,11 +489,12 @@ Stable versions are tagged for easy rollback:
 
 | Tag | Description |
 |-----|-------------|
-| `v1.0.0-dual-agent-eval` | Latest stable (dual-agent comparison) |
+| `v2.0.0-comprehensive-eval` | Latest stable (three-tier evaluation) |
+| `v1.0.0-dual-agent-eval` | Previous stable (quality + safety only) |
 
 ```bash
 # Checkout a specific version
-git checkout v1.0.0-dual-agent-eval
+git checkout v2.0.0-comprehensive-eval
 
 # List all tags
 git tag -l
