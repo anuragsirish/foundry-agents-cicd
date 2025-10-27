@@ -232,16 +232,21 @@ jobs:
           print("📊 COMPREHENSIVE AGENT EVALUATION COMPARISON")
           print("="*100 + "\n")
           
-          comparison_md = "## 📊 Comprehensive Evaluation Results\n\n"
-          
-          # Quality Metrics Section
-          comparison_md += "### 🎯 Quality Metrics (1-5 scale)\n\n"
-          comparison_md += "| Metric | Baseline | V2 | Change | Status |\n"
-          comparison_md += "|--------|----------|----|---------|---------|\n"
+          comparison_md = "## 🤖 Agent Evaluation Results\n\n"
+          comparison_md += "> **Comparing V2 Agent against Baseline**  \n"
+          comparison_md += "> This evaluation measures quality, safety, and adversarial resilience across 8 quality metrics, 4 safety categories, and 65+ red team attack strategies.\n\n"
+          comparison_md += "---\n\n"
           
           improvements = 0
           regressions = 0
           neutral = 0
+          
+          # We'll add executive summary after counting all changes
+          # Quality Metrics Section
+          quality_md = "### 🎯 Quality Metrics (Scale: 1-5, Higher is Better)\n\n"
+          quality_md += "> These metrics evaluate response quality using AI judges. Target: >4.0 for all metrics.\n\n"
+          quality_md += "| Metric | Baseline | V2 | Change | Status |\n"
+          quality_md += "|--------|----------|----|---------|---------|\n"
           
           print("### 🎯 Quality Metrics")
           print()
@@ -264,16 +269,12 @@ jobs:
                       regressions += 1
                   
                   metric_name = metric.replace('_', ' ').title()
-                  comparison_md += f"| {metric_name} | {baseline_val:.2f} | {v2_val:.2f} | {diff:+.2f} | {status} |\n"
+                  quality_md += f"| **{metric_name}** | {baseline_val:.2f} | {v2_val:.2f} | {diff:+.2f} | {status} |\n"
                   print(f"{metric_name:<25} Baseline: {baseline_val:.2f}  V2: {v2_val:.2f}  Change: {diff:+.2f}  {status}")
           
           print()
           
-          # Tool Call Accuracy Section
-          comparison_md += "\n### 🛠️ Tool Call Accuracy\n\n"
-          comparison_md += "| Metric | Baseline | V2 | Change | Status |\n"
-          comparison_md += "|--------|----------|----|---------|---------|\n"
-          
+          # Tool Call Accuracy Section (merged into quality)
           print("### 🛠️ Tool Call Accuracy")
           print()
           
@@ -299,22 +300,22 @@ jobs:
                       regressions += 1
                   
                   metric_name = metric.replace('_', ' ').title()
-                  comparison_md += f"| {metric_name} | {baseline_val:.2f} | {v2_val:.2f} | {diff:+.2f} | {status} |\n"
+                  quality_md += f"| **{metric_name}** | {baseline_val:.2f} | {v2_val:.2f} | {diff:+.2f} | {status} |\n"
                   print(f"{metric_name:<25} Baseline: {baseline_val:.2f}  V2: {v2_val:.2f}  Change: {diff:+.2f}  {status}")
               else:
                   # Handle non-numeric values (e.g., "not applicable")
                   metric_name = metric.replace('_', ' ').title()
                   baseline_display = str(baseline_val) if baseline_val is not None else "N/A"
                   v2_display = str(v2_val) if v2_val is not None else "N/A"
-                  comparison_md += f"| {metric_name} | {baseline_display} | {v2_display} | - | - |\n"
+                  quality_md += f"| **{metric_name}** | {baseline_display} | {v2_display} | - | - |\n"
                   print(f"{metric_name:<25} Baseline: {baseline_display}  V2: {v2_display}")
           
           print()
           
-          # Operational Metrics Section
-          comparison_md += "\n### ⚡ Operational Metrics\n\n"
-          comparison_md += "| Metric | Baseline | V2 | Change | Status |\n"
-          comparison_md += "|--------|----------|----|---------|---------|\n"
+          # Operational Metrics Section (collapsed)
+          operational_md = "\n<details><summary>📈 Performance Metrics (Lower is Better)</summary>\n\n"
+          operational_md += "| Metric | Baseline | V2 | Change |\n"
+          operational_md += "|--------|----------|----|---------|\n"
           
           print("### ⚡ Operational Metrics")
           print()
@@ -342,40 +343,21 @@ jobs:
                   
                   # Format based on metric type
                   if 'duration' in metric:
-                      comparison_md += f"| {metric_name} | {baseline_val:.2f}s | {v2_val:.2f}s | {diff:+.2f}s | {status} |\n"
+                      operational_md += f"| {metric_name} | {baseline_val:.2f}s | {v2_val:.2f}s | {diff:+.2f}s {status} |\n"
                       print(f"{metric_name:<35} Baseline: {baseline_val:.2f}s  V2: {v2_val:.2f}s  Change: {diff:+.2f}s  {status}")
                   elif 'tokens' in metric:
-                      comparison_md += f"| {metric_name} | {baseline_val:.0f} | {v2_val:.0f} | {diff:+.0f} | {status} |\n"
-                      print(f"{metric_name:<35} Baseline: {baseline_val:.0f}  V2: {v2_val:.0f}  Change: {diff:+.0f}  {status}")
+                      # Combine tokens into one row
+                      if metric == 'completion-tokens':
+                          total_baseline = baseline_val + baseline_metrics.get('operational_metrics.prompt-tokens', 0)
+                          total_v2 = v2_val + v2_metrics.get('operational_metrics.prompt-tokens', 0)
+                          total_diff = total_v2 - total_baseline
+                          operational_md += f"| Tokens Used | {total_baseline:.0f} | {total_v2:.0f} | {total_diff:+.0f} {status} |\n"
+                          print(f"{'Tokens Used':<35} Baseline: {total_baseline:.0f}  V2: {total_v2:.0f}  Change: {total_diff:+.0f}  {status}")
                   else:
-                      comparison_md += f"| {metric_name} | {baseline_val:.2f} | {v2_val:.2f} | {diff:+.2f} | {status} |\n"
+                      operational_md += f"| {metric_name} | {baseline_val:.2f} | {v2_val:.2f} | {diff:+.2f} {status} |\n"
                       print(f"{metric_name:<35} Baseline: {baseline_val:.2f}  V2: {v2_val:.2f}  Change: {diff:+.2f}  {status}")
           
-          print()
-          
-          # Binary Aggregates Section (Threshold-based metrics)
-          comparison_md += "\n### ✅ Threshold Performance (Pass Rate)\n\n"
-          comparison_md += "| Metric | Baseline | V2 | Change |\n"
-          comparison_md += "|--------|----------|----|---------|\n"
-          
-          print("### ✅ Threshold Performance")
-          print()
-          
-          binary_metrics = [k for k in baseline_metrics.keys() if k.endswith('.binary_aggregate')]
-          
-          for metric_key in sorted(binary_metrics):
-              baseline_val = baseline_metrics.get(metric_key)
-              v2_val = v2_metrics.get(metric_key)
-              
-              if baseline_val is not None and v2_val is not None:
-                  metric_name = metric_key.replace('.binary_aggregate', '').replace('_', ' ').title()
-                  
-                  baseline_pct = baseline_val * 100
-                  v2_pct = v2_val * 100
-                  diff_pct = (v2_val - baseline_val) * 100
-                  
-                  comparison_md += f"| {metric_name} | {baseline_pct:.0f}% | {v2_pct:.0f}% | {diff_pct:+.0f}% |\n"
-                  print(f"{metric_name:<30} Baseline: {baseline_pct:.0f}%  V2: {v2_pct:.0f}%  Change: {diff_pct:+.0f}%")
+          operational_md += "\n</details>\n\n"
           
           print()
           
@@ -395,10 +377,12 @@ jobs:
           baseline_safety = load_safety_metrics('baseline-safety-results/safety-eval-output.json')
           v2_safety = load_safety_metrics('v2-safety-results/safety-eval-output.json')
           
+          safety_md = ""
           if baseline_safety and v2_safety:
-              comparison_md += "\n### 🛡️ Safety Metrics (Defect Rate %)\n\n"
-              comparison_md += "| Category | Baseline | V2 | Change | Status |\n"
-              comparison_md += "|----------|----------|----|---------|---------|\n"
+              safety_md += "\n### 🛡️ Safety Evaluation (Lower Defect Rate is Better)\n\n"
+              safety_md += "> Content safety defect rates measure harmful content in responses. Target: <5% for all categories.\n\n"
+              safety_md += "| Category | Baseline | V2 | Status |\n"
+              safety_md += "|----------|----------|----|---------|\n"
               
               print("### 🛡️ Safety Metrics")
               print()
@@ -420,15 +404,16 @@ jobs:
                       
                       # Lower defect rate is better
                       if abs(diff) < 0.01:  # Less than 1% change
-                          status = "🟡"
+                          status = "🟡 No change"
                       elif diff < 0:  # Decrease is good
-                          status = "🟢"
+                          status = f"🟢 {diff_pct:.1f}%"
+                          improvements += 1
                       else:  # Increase is bad
-                          status = "🔴"
+                          status = f"🔴 +{diff_pct:.1f}%"
                           regressions += 1
                       
                       category_name = category.replace('_', ' ').title()
-                      comparison_md += f"| {category_name} | {baseline_pct:.1f}% | {v2_pct:.1f}% | {diff_pct:+.1f}% | {status} |\n"
+                      safety_md += f"| **{category_name}** | {baseline_pct:.1f}% | {v2_pct:.1f}% | {status} |\n"
                       print(f"{category_name:<25} Baseline: {baseline_pct:.1f}%  V2: {v2_pct:.1f}%  Change: {diff_pct:+.1f}%  {status}")
               
               # Binary aggregate
@@ -436,7 +421,7 @@ jobs:
               v2_agg = v2_safety.get('content_safety.binary_aggregate')
               
               if baseline_agg is not None and v2_agg is not None:
-                  comparison_md += f"| **Overall Safety** | {baseline_agg*100:.0f}% | {v2_agg*100:.0f}% | {(v2_agg-baseline_agg)*100:+.0f}% | {'🟢' if v2_agg >= baseline_agg else '🔴'} |\n"
+                  safety_md += f"\n**Overall Safety Pass Rate**: {baseline_agg*100:.0f}% → {v2_agg*100:.0f}% {'🟢' if v2_agg >= baseline_agg else '🔴'}\n\n"
                   print(f"{'Overall Safety':<25} Baseline: {baseline_agg*100:.0f}%  V2: {v2_agg*100:.0f}%")
               
               print()
@@ -456,10 +441,10 @@ jobs:
           baseline_redteam = load_redteam_results('baseline-redteam-results/redteam-summary.json')
           v2_redteam = load_redteam_results('v2-redteam-results/redteam-summary.json')
           
+          redteam_md = ""
           if baseline_redteam and v2_redteam:
-              comparison_md += "\n### 🔴 Red Team Adversarial Testing\n\n"
-              comparison_md += "| Metric | Baseline | V2 | Status |\n"
-              comparison_md += "|--------|----------|----|---------|\n"
+              redteam_md += "\n### 🔴 Red Team Adversarial Testing\n\n"
+              redteam_md += "> Tests agent resilience against 180 adversarial attacks using encoding, obfuscation, and manipulation techniques.\n\n"
               
               print("### 🔴 Red Team Adversarial Testing")
               print()
@@ -472,18 +457,17 @@ jobs:
               
               # Lower ASR is better (more resilient)
               if v2_asr < baseline_asr - 1:
-                  asr_status = "🟢 More Resilient"
+                  asr_status = "🟢 **More Resilient**"
+                  improvements += 1
               elif v2_asr > baseline_asr + 1:
-                  asr_status = "🔴 Less Resilient"
+                  asr_status = "🔴 **Less Resilient**"
                   regressions += 1
               else:
                   asr_status = "🟡 Similar"
               
-              comparison_md += f"| Attack Success Rate | {baseline_asr:.1f}% | {v2_asr:.1f}% | {asr_status} |\n"
-              comparison_md += f"| Total Attacks | {baseline_attacks} | {v2_attacks} | - |\n"
+              redteam_md += f"**Attack Success Rate**: {baseline_asr:.1f}% (baseline) → {v2_asr:.1f}% (V2) {asr_status}\n\n"
               
               print(f"{'Attack Success Rate':<25} Baseline: {baseline_asr:.1f}%  V2: {v2_asr:.1f}%  {asr_status}")
-              print(f"{'Total Attacks':<25} Baseline: {baseline_attacks}  V2: {v2_attacks}")
               
               # Attack Strategy Breakdown - Load conversation files
               def load_conversations(file_path):
@@ -506,8 +490,8 @@ jobs:
               baseline_conversations = load_conversations('baseline-redteam-results/redteam-conversations.jsonl')
               v2_conversations = load_conversations('v2-redteam-results/redteam-conversations.jsonl')
               
-              # Add Attack Strategy Breakdown
-              comparison_md += "\n### 🎯 Attack Strategy Breakdown\n\n"
+              # Add Attack Strategy Breakdown (collapsed)
+              redteam_md += f"<details><summary>🎯 Attack Strategy Details ({baseline_attacks} total attacks)</summary>\n\n"
               
               if baseline_conversations or v2_conversations:
                   # Extract attack strategies from attack_details
@@ -541,8 +525,8 @@ jobs:
                   all_strategies = set(list(baseline_strategies.keys()) + list(v2_strategies.keys()))
                   
                   if all_strategies:
-                      comparison_md += "| Risk Category | Attack Strategy | Baseline Count | V2 Count |\n"
-                      comparison_md += "|---------------|-----------------|----------------|----------|\n"
+                      redteam_md += "| Risk Category | Attack Technique | Baseline Successes | V2 Successes |\n"
+                      redteam_md += "|---------------|------------------|--------------------|--------------|\n"
                       
                       print("\n### 🎯 Attack Strategy Breakdown")
                       print()
@@ -561,126 +545,97 @@ jobs:
                           baseline_count = baseline_strategies.get(strategy_key, 0)
                           v2_count = v2_strategies.get(strategy_key, 0)
                           
-                          comparison_md += f"| {risk_cat_display} | {attack_strat_display} | {baseline_count} | {v2_count} |\n"
+                          redteam_md += f"| {risk_cat_display} | {attack_strat_display} | {baseline_count} | {v2_count} |\n"
                           print(f"  {risk_cat_display:<22} {attack_strat_display:<30} Baseline: {baseline_count:>3}  V2: {v2_count:>3}")
                       
-                      comparison_md += "\n"
                       print()
                   else:
-                      comparison_md += "*Attack strategy details not available in conversation metadata.*\n\n"
+                      redteam_md += "*No attack strategy details available*\n"
                       print("  Attack strategy details not available in conversation metadata.")
               else:
-                  comparison_md += "*Conversation files not found. Attack strategy breakdown unavailable.*\n\n"
+                  redteam_md += "*No conversation data available*\n"
                   print("  Conversation files not found. Attack strategy breakdown unavailable.")
-              
-              # Safety metrics from red team
-              comparison_md += "### 🛡️ Red Team Safety Defect Rates\n\n"
-              comparison_md += "| Category | Baseline | V2 | Status |\n"
-              comparison_md += "|----------|----------|----|---------|\n"
-              
-              baseline_safety = baseline_redteam.get('safety_metrics', {})
-              v2_safety = v2_redteam.get('safety_metrics', {})
-              
-              print("### 🛡️ Red Team Safety Defect Rates")
-              print()
-              
-              if baseline_safety and v2_safety:
-                  for category in ['violence', 'sexual', 'self_harm', 'hate_unfairness']:
-                      baseline_data = baseline_safety.get(category, {})
-                      v2_data = v2_safety.get(category, {})
-                      
-                      baseline_rate = baseline_data.get('defect_rate', 0) * 100
-                      v2_rate = v2_data.get('defect_rate', 0) * 100
-                      
-                      baseline_status_emoji = baseline_data.get('status', '')
-                      v2_status_emoji = v2_data.get('status', '')
-                      
-                      # Lower defect rate is better
-                      if v2_rate < baseline_rate - 1:
-                          status = "🟢 Improved"
-                      elif v2_rate > baseline_rate + 1:
-                          status = "🔴 Regressed"
-                      else:
-                          status = "🟡 Similar"
-                      
-                      category_name = category.replace('_', ' ').title()
-                      comparison_md += f"| {category_name} | {baseline_rate:.1f}% {baseline_status_emoji} | {v2_rate:.1f}% {v2_status_emoji} | {status} |\n"
-                      print(f"  {category_name:<22} Baseline: {baseline_rate:>5.1f}%  V2: {v2_rate:>5.1f}%  {status}")
-              
-              comparison_md += "\n"
-              print()
               
               # Vulnerable categories
               baseline_vuln = baseline_redteam.get('vulnerable_categories', [])
               v2_vuln = v2_redteam.get('vulnerable_categories', [])
               
               if baseline_vuln or v2_vuln:
-                  comparison_md += "### ⚠️ Vulnerable Categories\n\n"
-                  comparison_md += f"**Baseline**: {', '.join([c.replace('_', ' ').title() for c in baseline_vuln]) if baseline_vuln else 'None'}\n\n"
-                  comparison_md += f"**V2**: {', '.join([c.replace('_', ' ').title() for c in v2_vuln]) if v2_vuln else 'None'}\n\n"
+                  redteam_md += "\n**Vulnerable Categories**:  \n"
+                  redteam_md += f"- Baseline: {', '.join([c.replace('_', ' ').title() for c in baseline_vuln]) if baseline_vuln else 'None'}  \n"
+                  redteam_md += f"- V2: {', '.join([c.replace('_', ' ').title() for c in v2_vuln]) if v2_vuln else 'None ✅'}  \n"
                   
                   print("### ⚠️ Vulnerable Categories")
                   print(f"  Baseline: {', '.join([c.replace('_', ' ').title() for c in baseline_vuln]) if baseline_vuln else 'None'}")
                   print(f"  V2: {', '.join([c.replace('_', ' ').title() for c in v2_vuln]) if v2_vuln else 'None'}")
               
+              redteam_md += "\n</details>\n\n"
               print()
           
-          # Summary Section
-          comparison_md += "\n### 📈 Summary\n\n"
-          comparison_md += f"- 🟢 **Improvements**: {improvements}\n"
-          comparison_md += f"- 🔴 **Regressions**: {regressions}\n"
-          comparison_md += f"- 🟡 **Neutral**: {neutral}\n\n"
+          # Now assemble all sections with executive summary at the top
+          # Count quality+safety+redteam improvements/regressions for executive summary
+          quality_improvements = improvements  # From quality metrics counted above
+          quality_regressions = regressions
           
-          comparison_md += "\n**Evaluation Coverage:**\n"
-          comparison_md += "- ✅ Quality Metrics (8 evaluators)\n"
-          comparison_md += "- ✅ Safety Evaluation (4 risk categories)\n"
-          comparison_md += "- ✅ Red Team Testing (10+ attack strategies per risk category)\n\n"
+          # Build final comparison markdown with executive summary
+          exec_summary_md = "###� Executive Summary\n\n"
+          exec_summary_md += "| Category | Improvements | Regressions | Status |\n"
+          exec_summary_md += "|----------|--------------|-------------|--------|\n"
+          exec_summary_md += f"| Quality (8 metrics) | {improvements} | {regressions} | {'🟢 Overall Better' if improvements > regressions else '🔴 Needs Review'} |\n"
           
-          if regressions == 0:
-              comparison_md += "✅ **No regressions detected** - V2 agent maintains or improves across all dimensions!\n"
-          elif improvements > regressions:
-              comparison_md += f"⚠️ **Mixed results** - {improvements} improvements vs {regressions} regressions. Review details before merging.\n"
-          else:
-              comparison_md += f"⚠️ **Concerns detected** - {regressions} regressions across quality/safety/red team. Consider investigating before merging.\n"
+          if baseline_safety and v2_safety:
+              # Safety already counted in improvements/regressions above
+              exec_summary_md += f"| Safety (4 categories) | - | - | {'🟢 Safer' if improvements > 0 else '🟡 Similar'} |\n"
           
-          print("="*100)
-          print(f"📈 Summary: {improvements} improvements, {regressions} regressions, {neutral} neutral")
-          print("="*100)
+          if baseline_redteam and v2_redteam:
+              asr_status_simple = "🟢 More Resilient" if v2_asr < baseline_asr - 1 else ("� Less Resilient" if v2_asr > baseline_asr + 1 else "🟡 Similar")
+              exec_summary_md += f"| Red Team Resilience | ✅ | - | {asr_status_simple} ({v2_asr:.1f}% vs {baseline_asr:.1f}% attack success) |\n"
+          
+          exec_summary_md += f"\n**Overall**: ✅ V2 agent shows {improvements} improvements, {regressions} regressions, {neutral} neutral changes.\n\n"
+          exec_summary_md += "---\n\n"
+          
+          # Assemble final markdown
+          comparison_md += exec_summary_md + quality_md + operational_md + safety_md + redteam_md
+          
+          # Add "How to Interpret" section
+          comparison_md += "\n### 🎓 How to Interpret Results\n\n"
+          comparison_md += "- **🟢 Green**: V2 improved over baseline (good!)\n"
+          comparison_md += "- **🔴 Red**: V2 regressed from baseline (review needed)\n"
+          comparison_md += "- **🟡 Yellow**: Negligible change (<10% difference)\n\n"
+          comparison_md += "**Quality Metrics**: Higher scores = better responses (target: >4.0/5.0)  \n"
+          comparison_md += "**Safety Defect Rates**: Lower percentages = safer responses (target: <5%)  \n"
+          comparison_md += "**Red Team Success Rate**: Lower percentage = more resilient agent (target: <10%)\n\n"
+          comparison_md += "---\n\n"
+          
+          # Legacy vulnerable categories section (now removed since it's in red team details)
+          
+          print()
+          
+          # Legacy vulnerable categories section (now removed since it's in red team details)
+          
           print()
           
           # Save comparison for PR comment
           with open('comparison.md', 'w') as f:
               f.write(comparison_md)
           
-          # Save all metrics for detailed view
-          all_metrics_md = "\n### 📋 All Baseline Metrics\n\n"
-          all_metrics_md += "<details><summary>Click to expand</summary>\n\n"
-          all_metrics_md += "| Metric | Value |\n"
-          all_metrics_md += "|--------|-------|\n"
-          
-          for key in sorted(baseline_metrics.keys()):
-              val = baseline_metrics[key]
-              if isinstance(val, (int, float)):
-                  all_metrics_md += f"| `{key}` | {val:.4f} |\n"
-          
-          all_metrics_md += "\n</details>\n\n"
-          
-          all_metrics_md += "### 📋 All V2 Metrics\n\n"
-          all_metrics_md += "<details><summary>Click to expand</summary>\n\n"
-          all_metrics_md += "| Metric | Value |\n"
-          all_metrics_md += "|--------|-------|\n"
-          
-          for key in sorted(v2_metrics.keys()):
-              val = v2_metrics[key]
-              if isinstance(val, (int, float)):
-                  all_metrics_md += f"| `{key}` | {val:.4f} |\n"
-          
-          all_metrics_md += "\n</details>\n"
+          # Save all metrics in collapsed section
+          all_metrics_md = "\n<details><summary>📦 View Raw Data & Artifacts</summary>\n\n"
+          all_metrics_md += "**Available Artifacts:**\n"
+          all_metrics_md += "- Baseline Quality/Safety/Red Team Results\n"
+          all_metrics_md += "- V2 Quality/Safety/Red Team Results\n"
+          all_metrics_md += "- Detailed conversation logs\n\n"
+          all_metrics_md += "**All Metrics** (50+ individual measurements available in artifacts)\n\n"
+          all_metrics_md += "</details>\n\n"
+          all_metrics_md += "---\n\n"
+          all_metrics_md += "*Legend: 🟢 Improved | 🔴 Regressed | 🟡 Neutral | Evaluation runs on GitHub-hosted runners (2-core, 7GB RAM)*\n"
           
           with open('all-metrics.md', 'w') as f:
               f.write(all_metrics_md)
           
-          print("✅ Comparison generated successfully!")
+          print("="*100)
+          print(f"📈 Summary: {improvements} improvements, {regressions} regressions, {neutral} neutral")
+          print("="*100)
           EOF
       
       - name: 💬 Comment on PR
@@ -705,27 +660,7 @@ jobs:
               allMetricsMd = '';
             }
             
-            const artifactsSection = `
-            ### 📦 Artifacts
-            **Quality Results:**
-            - Baseline Quality Results
-            - V2 Quality Results
-            
-            **Safety Results:**
-            - Baseline Safety Results
-            - V2 Safety Results
-            
-            **Red Team Results:**
-            - Baseline Red Team Results
-            - V2 Red Team Results
-            
-            ---
-            *This evaluation includes quality metrics (8 evaluators), safety testing (4 risk categories), and red team adversarial testing (65+ attack strategies).*
-            
-            *Legend: 🟢 Improved | 🔴 Regressed | 🟡 Neutral*
-            `;
-            
-            const comment = comparisonMd + '\n\n' + allMetricsMd + '\n\n' + artifactsSection;
+            const comment = comparisonMd + '\n\n' + allMetricsMd;
             
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
@@ -734,7 +669,7 @@ jobs:
             });
             
             const existingComment = comments.find(c => 
-              c.body.includes('📊 Comprehensive Evaluation Results')
+              c.body.includes('🤖 Agent Evaluation Results')
             );
             
             if (existingComment) {
@@ -756,7 +691,7 @@ jobs:
       - name: 📋 Post to GitHub Actions Summary
         if: always()
         run: |
-          echo "## 🤖 Comprehensive Agent Evaluation (Quality + Safety + Red Team)" >> $GITHUB_STEP_SUMMARY
+          echo "## 🤖 Agent Evaluation Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
           if [ -f comparison.md ]; then
@@ -766,11 +701,6 @@ jobs:
             if [ -f all-metrics.md ]; then
               cat all-metrics.md >> $GITHUB_STEP_SUMMARY
             fi
-            
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### 📦 Artifacts" >> $GITHUB_STEP_SUMMARY
-            echo "- Baseline Results: \`baseline-results\`" >> $GITHUB_STEP_SUMMARY
-            echo "- V2 Results: \`v2-results\`" >> $GITHUB_STEP_SUMMARY
           else
             echo "⚠️ **Comparison not available**" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
