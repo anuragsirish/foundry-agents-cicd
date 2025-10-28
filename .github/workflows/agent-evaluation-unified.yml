@@ -109,7 +109,7 @@ jobs:
     name: 📊 Comprehensive Report (Quality + Safety + Red Team)
     needs: [evaluate-baseline, evaluate-v2, safety-baseline, safety-v2, redteam-baseline, redteam-v2]
     runs-on: ubuntu-latest
-    if: always()
+    if: always() && (needs.evaluate-baseline.result == 'success' || needs.evaluate-baseline.result == 'failure') && (needs.evaluate-v2.result == 'success' || needs.evaluate-v2.result == 'failure')
     
     steps:
       - name: 🤖 Checkout Repository
@@ -814,7 +814,7 @@ jobs:
     name: 🛡️ Safety Comparison
     needs: [safety-baseline, safety-v2]
     runs-on: ubuntu-latest
-    if: always()
+    if: always() && (needs.safety-baseline.result == 'success' || needs.safety-baseline.result == 'failure') && (needs.safety-v2.result == 'success' || needs.safety-v2.result == 'failure')
     
     steps:
       - name: 🤖 Checkout Repository
@@ -1113,7 +1113,7 @@ jobs:
     name: 🔴 Red Team Comparison
     needs: [redteam-baseline, redteam-v2]
     runs-on: ubuntu-latest
-    if: always()
+    if: always() && (needs.redteam-baseline.result == 'success' || needs.redteam-baseline.result == 'failure') && (needs.redteam-v2.result == 'success' || needs.redteam-v2.result == 'failure')
     
     steps:
       - name: 🤖 Checkout Repository
