@@ -117,12 +117,14 @@ jobs:
       
       - name: 📥 Download Baseline Results
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           name: baseline-results
           path: baseline-results
       
       - name: 📥 Download V2 Results
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           name: v2-results
           path: v2-results
@@ -154,6 +156,22 @@ jobs:
           name: v2-redteam-results
           path: v2-redteam-results
         continue-on-error: true
+      
+      - name: 📋 Create Missing Result Files
+        run: |
+          # Create directories if they don't exist
+          mkdir -p baseline-results v2-results baseline-safety-results v2-safety-results baseline-redteam-results v2-redteam-results
+          
+          # Create empty result files if missing
+          if [ ! -f baseline-results/quality-eval-output.json ]; then
+            echo '{"metrics": {}, "error": "Baseline evaluation failed or did not complete"}' > baseline-results/quality-eval-output.json
+            echo "⚠️ Created placeholder for missing baseline-results"
+          fi
+          
+          if [ ! -f v2-results/quality-eval-output.json ]; then
+            echo '{"metrics": {}, "error": "V2 evaluation failed or did not complete"}' > v2-results/quality-eval-output.json
+            echo "⚠️ Created placeholder for missing v2-results"
+          fi
       
       - name: �📊 Compare and Generate Report
         id: compare
