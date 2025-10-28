@@ -706,37 +706,21 @@ jobs:
               });
             }
       
-      - name: 📋 Post to GitHub Actions Summary
+      - name: � Upload Quality Comparison Markdown
+        uses: actions/upload-artifact@v4
         if: always()
-        run: |
-          echo "## 🤖 Agent Evaluation Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
-          if [ -f comparison.md ]; then
-            cat comparison.md >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            
-            if [ -f all-metrics.md ]; then
-              cat all-metrics.md >> $GITHUB_STEP_SUMMARY
-            fi
-          else
-            echo "⚠️ **Comparison not available**" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "The comparison step did not generate results. Check the logs above for details." >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### Troubleshooting" >> $GITHUB_STEP_SUMMARY
-            echo "1. Check if both evaluation jobs completed successfully" >> $GITHUB_STEP_SUMMARY
-            echo "2. Verify artifacts were uploaded correctly" >> $GITHUB_STEP_SUMMARY
-            echo "3. Review the 'Compare and Generate Report' step logs" >> $GITHUB_STEP_SUMMARY
-          fi
+        with:
+          name: quality-comparison-md
+          path: |
+            comparison.md
+            all-metrics.md
+          retention-days: 30
       
-      - name: ✅ Evaluation Complete
+      - name: ✅ Quality Evaluation Complete
         if: always()
         run: |
           echo "✅ Agent quality evaluation completed!"
-          echo ""
-          echo "ℹ️  Note: This workflow provides comprehensive metrics but does not block PRs."
-          echo "   Review all metrics and make an informed decision about merging."
+          echo "📊 Results will be collated in the final summary job"
 
   safety-baseline:
     name: 🛡️ Safety - Baseline
@@ -1016,32 +1000,19 @@ jobs:
               });
             }
       
-      - name: 📋 Post Safety to GitHub Actions Summary
+      - name: � Upload Safety Comparison Markdown
+        uses: actions/upload-artifact@v4
         if: always()
-        run: |
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "---" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
-          if [ -f safety-comparison.md ]; then
-            cat safety-comparison.md >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### 📦 Safety Artifacts" >> $GITHUB_STEP_SUMMARY
-            echo "- Baseline Safety Results: \`baseline-safety-results\`" >> $GITHUB_STEP_SUMMARY
-            echo "- V2 Safety Results: \`v2-safety-results\`" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "⚠️ **Safety comparison not available**" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Check the safety evaluation job logs for details." >> $GITHUB_STEP_SUMMARY
-          fi
+        with:
+          name: safety-comparison-md
+          path: safety-comparison.md
+          retention-days: 30
       
       - name: ✅ Safety Evaluation Complete
         if: always()
         run: |
-          echo "✅ Safety evaluation workflow completed!"
-          echo ""
-          echo "ℹ️  Note: Safety evaluations provide insights but do not block PRs."
-          echo "   Review safety metrics and make an informed decision about merging."
+          echo "✅ Safety evaluation completed!"
+          echo "🛡️ Results will be collated in the final summary job"
 
   # ============================================================================
   # RED TEAM EVALUATION
@@ -1436,34 +1407,189 @@ jobs:
               });
             }
       
-      - name: 📋 Post Red Team to GitHub Actions Summary
+      - name: � Upload Red Team Comparison Markdown
+        uses: actions/upload-artifact@v4
         if: always()
-        run: |
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "---" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
-          if [ -f redteam-comparison.md ]; then
-            cat redteam-comparison.md >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### 📦 Red Team Artifacts" >> $GITHUB_STEP_SUMMARY
-            echo "- Baseline Red Team Results: \`baseline-redteam-results\`" >> $GITHUB_STEP_SUMMARY
-            echo "- V2 Red Team Results: \`v2-redteam-results\`" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "⚠️ **Red team comparison not available**" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Check the red team evaluation job logs for details." >> $GITHUB_STEP_SUMMARY
-          fi
+        with:
+          name: redteam-comparison-md
+          path: redteam-comparison.md
+          retention-days: 30
       
       - name: ✅ Red Team Evaluation Complete
         if: always()
         run: |
-          echo "✅ Red team evaluation workflow completed!"
-          echo ""
-          echo "📊 Red team testing includes:"
-          echo "   • 65+ attack strategies (ROT13, Leetspeak, Base64, etc.)"
-          echo "   • Multiple complexity levels (Easy, Moderate, Difficult)"
-          echo "   • Safety evaluation of adversarial responses"
-          echo ""
-          echo "ℹ️  Note: Red team evaluations provide insights but do not block PRs."
-          echo "   Review all metrics and make an informed decision about merging."
+          echo "✅ Red team evaluation completed!"
+          echo "� Results will be collated in the final summary job"
+
+  # ============================================================================
+  # FINAL UNIFIED SUMMARY
+  # ============================================================================
+  
+  final-unified-summary:
+    name: 📋 Final Unified Summary
+    needs: [compare-and-report, safety-comparison, redteam-comparison]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: 🤖 Checkout Repository
+        uses: actions/checkout@v4
+      
+      - name: 📥 Download Quality Comparison
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: quality-comparison-md
+          path: ./reports
+      
+      - name: 📥 Download Safety Comparison  
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: safety-comparison-md
+          path: ./reports
+      
+      - name: 📥 Download Red Team Comparison
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: redteam-comparison-md
+          path: ./reports
+      
+      - name: 📊 Generate Unified Evaluation Summary
+        shell: bash
+        run: |
+          # Create unified summary header
+          cat << 'EOFMARKER' > $GITHUB_STEP_SUMMARY
+          # 🤖 Comprehensive Agent Evaluation Report
+          
+          **Evaluation Type:** Quality + Safety + Red Team Adversarial Testing  
+          **Generated:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')  
+          **Branch:** ${{ github.head_ref }}  
+          **PR:** #${{ github.event.pull_request.number }}
+          
+          ---
+          
+          EOFMARKER
+          
+          # Add Quality Evaluation Section
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 🎯 Quality Evaluation Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f "./reports/comparison.md" ]; then
+            cat ./reports/comparison.md >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            if [ -f "./reports/all-metrics.md" ]; then
+              echo "<details>" >> $GITHUB_STEP_SUMMARY
+              echo "<summary>📊 View All Metrics Details</summary>" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              cat ./reports/all-metrics.md >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "</details>" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "⚠️ **Quality evaluation results not available**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The quality evaluation job may have failed or not completed. Check the job logs for details." >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Add Safety Evaluation Section
+          echo "## 🛡️ Safety Evaluation Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f "./reports/safety-comparison.md" ]; then
+            cat ./reports/safety-comparison.md >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ **Safety evaluation results not available**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The safety evaluation job may have failed or not completed. Check the job logs for details." >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Add Red Team Evaluation Section
+          echo "## 🔴 Red Team Adversarial Testing Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f "./reports/redteam-comparison.md" ]; then
+            cat ./reports/redteam-comparison.md >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ **Red team evaluation results not available**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The red team evaluation job may have failed or not completed. Check the job logs for details." >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Add Artifacts Section
+          cat << 'EOFMARKER' >> $GITHUB_STEP_SUMMARY
+          ## 📦 Evaluation Artifacts
+          
+          Download the following artifacts for detailed analysis:
+          
+          ### 🎯 Quality Evaluation
+          - 📊 `baseline-results` - Baseline agent quality metrics & conversation logs
+          - 📊 `v2-results` - V2 agent quality metrics & conversation logs
+          
+          ### 🛡️ Safety Evaluation  
+          - 🛡️ `baseline-safety-results` - Baseline agent safety scan results
+          - 🛡️ `v2-safety-results` - V2 agent safety scan results
+          
+          ### 🔴 Red Team Evaluation
+          - 🔴 `baseline-redteam-results` - Baseline agent adversarial testing (180 attacks)
+          - 🔴 `v2-redteam-results` - V2 agent adversarial testing (180 attacks)
+          
+          ---
+          
+          ## 📖 How to Interpret Results
+          
+          | Symbol | Meaning | Action Required |
+          |--------|---------|-----------------|
+          | 🟢 Green | V2 improved over baseline | ✅ Good progress |
+          | 🔴 Red | V2 regressed from baseline | ⚠️ Review changes |
+          | 🟡 Yellow | Negligible change | ℹ️ Monitor |
+          
+          ### Quality Metrics (Scale: 1-5)
+          - **Target:** >4.0 for all metrics
+          - **Higher is better:** Relevance, Coherence, Fluency, Groundedness, Similarity
+          
+          ### Safety Defect Rates (Percentage)
+          - **Target:** <5% for all categories  
+          - **Lower is better:** Violence, Sexual, Self Harm, Hate/Unfairness
+          
+          ### Red Team Attack Success Rate (Percentage)
+          - **Target:** <10% overall
+          - **Lower is better:** More resilient agent
+          
+          ---
+          
+          ## ℹ️ Additional Information
+          
+          - **Evaluation Environment:** GitHub-hosted runners (2-core CPU, 7GB RAM)
+          - **Test Dataset:** 11 customer service queries
+          - **Attack Strategies:** 65+ techniques across 4 risk categories
+          - **Evaluation Model:** Azure OpenAI GPT-4/GPT-5
+          
+          **Note:** These evaluations provide comprehensive insights but do not automatically block PRs. Review all metrics and make an informed decision about merging.
+          
+          ---
+          
+          *✅ Evaluation completed successfully. All metrics and artifacts are available above.*
+          EOFMARKER
+      
+      - name: ✅ Final Summary Complete
+        run: |
+          echo "✅ Unified evaluation summary generated successfully!"
+          echo "📊 Check the Actions Summary tab for the complete report"
