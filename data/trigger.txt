@@ -1,1 +1,1 @@
-# Trigger workflow
+# Trigger workflow - Run $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
