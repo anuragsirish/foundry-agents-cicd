@@ -1,1 +1,1 @@
-# Trigger workflow - Run $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
+# Trigger workflow - Run with error handling fixes - 2025-10-28 17:30:00
