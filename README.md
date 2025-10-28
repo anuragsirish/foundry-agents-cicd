@@ -466,15 +466,87 @@ Warning: github-script action failed
 
 ## 📚 Documentation
 
-| Document | Description |
-|----------|-------------|
-| [SETUP-GUIDE.md](SETUP-GUIDE.md) | Complete Azure and GitHub setup |
-| [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) | Dev → Staging → Production deployment process |
-| [DEMO_GUIDE.md](DEMO_GUIDE.md) | Customer demo instructions |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture and design |
-| [CICD_PIPELINE.md](CICD_PIPELINE.md) | Pipeline implementation details |
-| [QUICK_REFERENCE.md](QUICK_REFERENCE.md) | Command reference guide |
-| [WORKFLOW_COMPARISON.md](WORKFLOW_COMPARISON.md) | Workflow approach comparison |
+- **[agent-setup/README.md](agent-setup/README.md)** - Step-by-step agent creation and testing guide
+- **[SETUP-GUIDE.md](SETUP-GUIDE.md)** - Complete Azure and GitHub setup instructions
+- **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - Multi-environment deployment (Dev → Staging → Prod)
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - System architecture and design decisions
+- **[CICD_PIPELINE.md](CICD_PIPELINE.md)** - Detailed pipeline implementation
+- **[azure-ai-github-eval.md](azure-ai-github-eval.md)** - Azure AI evaluation integration guide
+
+## 🚀 Quick Reference
+
+### Common Commands
+
+```bash
+# Create agents
+python agent-setup/create_customer_service_agent.py  # Create baseline agent
+python agent-setup/create_agent_v2.py                 # Create V2 agent
+
+# Test agents locally
+python agent-setup/test_agent_locally.py              # Interactive testing
+python agent-setup/test_agent_locally.py --auto       # Automated testing
+
+# Run evaluations locally
+python scripts/local_quality_eval.py                  # Quality evaluation
+python scripts/local_safety_eval.py                   # Safety evaluation
+python scripts/local_redteam_eval.py                  # Red team testing
+
+# Update GitHub variables
+gh variable set AGENT_ID_BASELINE --body "asst_xxxxx"
+gh variable set AGENT_ID_V2 --body "asst_yyyyy"
+
+# Trigger workflow manually
+gh workflow run agent-evaluation-unified.yml
+
+# View workflow runs
+gh run list --limit 5
+gh run view --log
+gh run watch
+```
+
+### File Structure
+
+```
+foundry-agents-cicd/
+├── .github/workflows/
+│   ├── agent-evaluation-unified.yml  # Main evaluation workflow
+│   └── update-baseline.yml           # Baseline metrics updater
+├── agent-setup/
+│   ├── create_customer_service_agent.py  # Create baseline agent
+│   ├── create_agent_v2.py                # Create V2 agent
+│   └── test_agent_locally.py             # Local testing
+├── data/
+│   ├── agent-eval-data.json          # Test dataset (11 queries)
+│   └── trigger.txt                   # Workflow trigger file
+├── evaluation_results/
+│   ├── baseline/                     # Baseline metrics (committed)
+│   ├── quality_eval_output/          # Quality results (gitignored)
+│   ├── safety_eval_output/           # Safety results (gitignored)
+│   └── redteam_eval_output/          # Red team results (gitignored)
+├── scripts/
+│   ├── local_quality_eval.py         # Local quality evaluation
+│   ├── local_safety_eval.py          # Local safety evaluation
+│   └── local_redteam_eval.py         # Local red team testing
+└── README.md                         # This file
+```
+
+### Workflow Artifacts
+
+Each workflow run produces 9 artifacts:
+
+| Artifact | Size | Description |
+|----------|------|-------------|
+| `baseline-results` | ~13 KB | Baseline agent quality metrics |
+| `v2-results` | ~10 KB | V2 agent quality metrics |
+| `baseline-safety-results` | ~11 KB | Baseline safety evaluation |
+| `v2-safety-results` | ~8 KB | V2 safety evaluation |
+| `baseline-redteam-results` | ~126 KB | Baseline adversarial testing (180 attacks) |
+| `v2-redteam-results` | ~226 KB | V2 adversarial testing (180 attacks) |
+| `quality-comparison-md` | ~5 KB | Quality comparison markdown |
+| `safety-comparison-md` | ~3 KB | Safety comparison markdown |
+| `redteam-comparison-md` | ~8 KB | Red team comparison markdown |
+
+**Retention:** All artifacts retained for 30 days
 
 ## � Additional Resources
 
@@ -525,3 +597,4 @@ MIT License - See LICENSE file for details
 
 **Built with ❤️ using Azure AI Foundry and GitHub Actions**
 # Testing safety evaluation workflow
+
