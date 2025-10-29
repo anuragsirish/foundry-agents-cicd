@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"path": "../.."
+		},
+		{
+			"path": "../../../../get-started-with-ai-agents"
+		},
+		{
+			"path": "../../../caas/caas-refactor-attempt"
+		},
+		{
+			"path": "../../../azure-sample/azureai-samples"
+		}
+	],
+	"settings": {}
+}
